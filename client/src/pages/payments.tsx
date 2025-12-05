@@ -679,10 +679,7 @@ export default function Payments() {
           ) : filteredPayments && filteredPayments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPayments.map((payment) => (
-                <div
-                  key={payment.id}
-                  onClick={() => openInvoiceForPayment(payment)}
-                >
+                <div key={payment.id}>
                   <PaymentCard
                     payment={payment}
                     onMarkPaid={(id) => markPaidMutation.mutate(id)}

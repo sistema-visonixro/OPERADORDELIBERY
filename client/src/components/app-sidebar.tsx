@@ -50,6 +50,11 @@ const navigationItems = [
     icon: CreditCard,
   },
   {
+    title: "Estado de cuentas",
+    url: "/pagos/estado-de-cuentas",
+    icon: FileText,
+  },
+  {
     title: "Suscripciones",
     url: "/suscripciones",
     icon: RefreshCcw,

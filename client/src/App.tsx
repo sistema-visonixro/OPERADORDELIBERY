@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
 import Payments from "@/pages/payments";
 import Subscriptions from "@/pages/subscriptions";
+import EstadoCuentas from "@/pages/estado-cuentas";
 import Statistics from "@/pages/statistics";
 import Proyecto from "@/pages/proyecto";
 import ProyectoVentas from "@/pages/proyecto-ventas";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/contratos-activos" component={ContratosActivos} />
       <Route path="/configuracion" component={Configuracion} />
       <Route path="/pagos" component={Payments} />
+      <Route path="/pagos/estado-de-cuentas" component={EstadoCuentas} />
       <Route path="/suscripciones" component={Subscriptions} />
       <Route path="/estadisticas" component={Statistics} />
       <Route component={NotFound} />
