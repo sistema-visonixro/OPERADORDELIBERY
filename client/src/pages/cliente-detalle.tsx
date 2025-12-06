@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import CobroForm from "@/components/cobro-form";
 
 export default function ClienteDetalle() {
   const [match, params] = useRoute("/clientes/:id");
@@ -54,6 +55,12 @@ export default function ClienteDetalle() {
   const [editingProximaFecha, setEditingProximaFecha] = useState("");
   const [confirmUpdateSuscripcionOpen, setConfirmUpdateSuscripcionOpen] = useState(false);
 
+  // Estado para modal de cobro
+  const [cobroModalOpen, setCobroModalOpen] = useState(false);
+  const [seleccionModalOpen, setSeleccionModalOpen] = useState(false);
+  const [selectedTipoForCobro, setSelectedTipoForCobro] = useState<"suscripcion" | "contrato" | null>(null);
+  const [selectedReferenciaForCobro, setSelectedReferenciaForCobro] = useState<any>(null);
+
   useEffect(() => {
     async function load() {
       if (!id) return;
@@ -71,12 +78,12 @@ export default function ClienteDetalle() {
           supabase
             .from("contratos")
             .select(
-              "id,monto_total,pago_inicial,cantidad_de_pagos,proximo_pago,proyecto,estado"
+              "id,monto_total,pago_inicial,cantidad_de_pagos,proximo_pago,proyecto,estado,cliente"
             )
             .eq("cliente", id),
           supabase
             .from("suscripciones")
-            .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active")
+            .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active,cliente")
             .eq("cliente", id),
         ]);
 
@@ -141,7 +148,7 @@ export default function ClienteDetalle() {
       // Recargar datos
       const { data } = await supabase
         .from("contratos")
-        .select("id,monto_total,pago_inicial,cantidad_de_pagos,proximo_pago,proyecto,estado")
+        .select("id,monto_total,pago_inicial,cantidad_de_pagos,proximo_pago,proyecto,estado,cliente")
         .eq("cliente", id);
       setContratos(Array.isArray(data) ? data : []);
       
@@ -207,7 +214,7 @@ export default function ClienteDetalle() {
       // Recargar datos
       const { data } = await supabase
         .from("suscripciones")
-        .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active")
+        .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active,cliente")
         .eq("cliente", id);
       setSuscripciones(Array.isArray(data) ? data : []);
       
@@ -243,7 +250,7 @@ export default function ClienteDetalle() {
       // Recargar datos
       const { data } = await supabase
         .from("suscripciones")
-        .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active")
+        .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active,cliente")
         .eq("cliente", id);
       setSuscripciones(Array.isArray(data) ? data : []);
       
@@ -335,7 +342,14 @@ export default function ClienteDetalle() {
 
   return (
     <div className="p-6 lg:p-8">
-      <h1 className="text-2xl font-semibold">Detalle de Cliente</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold">Detalle de Cliente</h1>
+        {cliente && (
+          <Button onClick={() => setSeleccionModalOpen(true)}>
+            Cobrar
+          </Button>
+        )}
+      </div>
       <div className="mt-6">
         {loading && <p>Cargando...</p>}
         {!loading && !cliente && <p>No se encontró el cliente.</p>}
@@ -1167,6 +1181,192 @@ export default function ClienteDetalle() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de selección de suscripción/contrato */}
+      <Dialog
+        open={seleccionModalOpen}
+        onOpenChange={(v) => {
+          setSeleccionModalOpen(v);
+          if (!v) {
+            setSelectedTipoForCobro(null);
+            setSelectedReferenciaForCobro(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Seleccionar contrato o suscripción para cobrar</DialogTitle>
+            <DialogDescription>
+              Selecciona un contrato o suscripción para proceder con el cobro
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Sección de Contratos Activos */}
+            <div>
+              <h3 className="font-semibold text-lg mb-3">Contratos activos</h3>
+              {contratosWithRestante.filter((c: any) => c.estado === "activo").length === 0 ? (
+                <div className="text-sm text-muted-foreground p-4 border rounded-lg">
+                  No hay contratos activos
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {contratosWithRestante
+                    .filter((c: any) => c.estado === "activo")
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedTipoForCobro("contrato");
+                          setSelectedReferenciaForCobro(c);
+                          setSeleccionModalOpen(false);
+                          setCobroModalOpen(true);
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium">{c.proyecto ?? "-"}</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Monto total: {formatCurrency(Number(c.monto_total ?? 0))}
+                            </p>
+                            <p className="text-sm text-primary font-medium mt-1">
+                              Saldo pendiente: {formatCurrency(Number(c.restante ?? 0))}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Próximo pago</p>
+                            <p className="text-sm font-medium">
+                              {c.proximo_pago ? formatDate(c.proximo_pago) : "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sección de Suscripciones Activas */}
+            <div>
+              <h3 className="font-semibold text-lg mb-3">Suscripciones activas</h3>
+              {suscripciones.filter((s: any) => s.is_active).length === 0 ? (
+                <div className="text-sm text-muted-foreground p-4 border rounded-lg">
+                  No hay suscripciones activas
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {suscripciones
+                    .filter((s: any) => s.is_active)
+                    .map((s) => {
+                      const today = new Date();
+                      const nextDate = s.proxima_fecha_de_pago
+                        ? new Date(s.proxima_fecha_de_pago)
+                        : null;
+                      today.setHours(0, 0, 0, 0);
+                      if (nextDate) nextDate.setHours(0, 0, 0, 0);
+                      const isOverdue = nextDate && today > nextDate;
+
+                      return (
+                        <div
+                          key={s.id}
+                          className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => {
+                            setSelectedTipoForCobro("suscripcion");
+                            setSelectedReferenciaForCobro(s);
+                            setSeleccionModalOpen(false);
+                            setCobroModalOpen(true);
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{s.proyecto ?? "-"}</p>
+                                <Badge
+                                  variant={isOverdue ? "destructive" : "secondary"}
+                                >
+                                  {isOverdue ? "Vencida" : "Al día"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Mensualidad: {formatCurrency(Number(s.mensualidad ?? 0))}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Próximo pago</p>
+                              <p className="text-sm font-medium">
+                                {s.proxima_fecha_de_pago
+                                  ? formatDate(s.proxima_fecha_de_pago)
+                                  : "-"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSeleccionModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de cobro */}
+      <CobroForm
+        open={cobroModalOpen}
+        onOpenChange={(v) => {
+          setCobroModalOpen(v);
+          if (!v) {
+            // Resetear la selección cuando se cierra el modal
+            setSelectedTipoForCobro(null);
+            setSelectedReferenciaForCobro(null);
+          }
+        }}
+        clienteId={id}
+        initialTipo={selectedTipoForCobro || undefined}
+        initialReferencia={selectedReferenciaForCobro}
+        onCreated={() => {
+          // Recargar pagos después de crear un cobro
+          if (id) {
+            supabase
+              .from("pagos")
+              .select(
+                "id,fecha_de_creacion,tipo,proyecto,monto,notas,referencia_id,created_at"
+              )
+              .eq("cliente", id)
+              .order("fecha_de_creacion", { ascending: false })
+              .then(({ data }) => {
+                setPagos(Array.isArray(data) ? data : []);
+              });
+            // Recargar contratos y suscripciones también
+            supabase
+              .from("contratos")
+              .select(
+                "id,monto_total,pago_inicial,cantidad_de_pagos,proximo_pago,proyecto,estado,cliente"
+              )
+              .eq("cliente", id)
+              .then(({ data }) => {
+                setContratos(Array.isArray(data) ? data : []);
+              });
+            supabase
+              .from("suscripciones")
+              .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active,cliente")
+              .eq("cliente", id)
+              .then(({ data }) => {
+                setSuscripciones(Array.isArray(data) ? data : []);
+              });
+          }
+        }}
+      />
     </div>
   );
 }

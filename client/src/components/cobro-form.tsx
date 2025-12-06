@@ -25,9 +25,12 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated?: () => void;
+  clienteId?: string; // Cliente precargado opcional
+  initialTipo?: "suscripcion" | "contrato"; // Tipo precargado
+  initialReferencia?: any; // Suscripción o contrato precargado
 };
 
-export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
+export default function CobroForm({ open, onOpenChange, onCreated, clienteId, initialTipo, initialReferencia }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [tipo, setTipo] = useState<"suscripcion" | "contrato" | "">("");
@@ -77,8 +80,14 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
   }, [invoiceOpen, invoiceAutoPrint, invoiceHtml]);
 
   useEffect(() => {
-    if (open) reset();
-  }, [open]);
+    if (open) {
+      if (initialTipo && initialReferencia) {
+        initializeWithSelection();
+      } else {
+        reset();
+      }
+    }
+  }, [open, initialTipo, initialReferencia]);
 
   function reset() {
     setStep(1);
@@ -93,14 +102,51 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
     setNextPaymentDate(null);
   }
 
+  async function initializeWithSelection() {
+    await loadMeta();
+    setTipo(initialTipo || "");
+    
+    if (initialTipo === "suscripcion" && initialReferencia) {
+      setSelectedSub(initialReferencia);
+      const suggested = calcularValorLabelSus(initialReferencia);
+      setAmount(String(suggested));
+      
+      // Calcular próxima fecha de pago
+      if (initialReferencia.proxima_fecha_de_pago) {
+        const months = computeMonthsDueCount(
+          initialReferencia.proxima_fecha_de_pago,
+          initialReferencia.dia_de_pago_mensual
+        );
+        const nextIso = addMonthsKeepDay(
+          initialReferencia.proxima_fecha_de_pago,
+          months
+        );
+        setNextPaymentDate(nextIso);
+      }
+      setStep(3);
+    } else if (initialTipo === "contrato" && initialReferencia) {
+      setSelectedContrato(initialReferencia);
+      const restante = await calcularRestanteContrato(initialReferencia);
+      setContratoRestante(restante);
+      setAmount(String(restante));
+      setStep(3);
+    }
+  }
+
   async function loadSubs() {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("suscripciones")
         .select(
           "id,cliente,proyecto,mensualidad,proxima_fecha_de_pago,dia_de_pago_mensual"
-        )
-        .order("fecha_de_creacion", { ascending: false });
+        );
+      
+      // Si hay un clienteId, filtrar por ese cliente
+      if (clienteId) {
+        query = query.eq("cliente", clienteId);
+      }
+      
+      const { data, error } = await query.order("fecha_de_creacion", { ascending: false });
       if (error) throw error;
       setSubsList(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -111,10 +157,16 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
 
   async function loadContratos() {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("contratos")
-        .select("id,cliente,proyecto,monto_total,pago_inicial")
-        .order("fecha_de_creacion", { ascending: false });
+        .select("id,cliente,proyecto,monto_total,pago_inicial");
+      
+      // Si hay un clienteId, filtrar por ese cliente
+      if (clienteId) {
+        query = query.eq("cliente", clienteId);
+      }
+      
+      const { data, error } = await query.order("fecha_de_creacion", { ascending: false });
       if (error) throw error;
       setContratosList(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -465,7 +517,7 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
           fecha_de_creacion: new Date().toISOString(),
           tipo: "suscripcion",
           referencia_id: selectedSub.id,
-          cliente: selectedSub.cliente,
+          cliente: clienteId || selectedSub.cliente,
           proyecto: selectedSub.proyecto,
           monto: monto,
         };
@@ -551,7 +603,7 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
           fecha_de_creacion: new Date().toISOString(),
           tipo: "contrato",
           referencia_id: selectedContrato.id,
-          cliente: selectedContrato.cliente,
+          cliente: clienteId || selectedContrato.cliente,
           proyecto: selectedContrato.proyecto,
           monto,
         };
