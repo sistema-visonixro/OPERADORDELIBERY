@@ -119,6 +119,8 @@ export default function ContratosActivos() {
   const [selectedContract, setSelectedContract] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [isEditingProximoPago, setIsEditingProximoPago] = useState(false);
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
   const { toast } = useToast();
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
@@ -133,6 +135,7 @@ export default function ContratosActivos() {
       ? new Date(contract.proximo_pago).toISOString().slice(0, 16)
       : "";
     setEditingDate(val || null);
+    setIsEditingProximoPago(false);
     setModalOpen(true);
     loadContractPayments(contract?.id);
   }
@@ -170,8 +173,10 @@ export default function ContratosActivos() {
       if (error) throw error;
       toast({ title: "Próximo pago actualizado" });
       queryClient.invalidateQueries({ queryKey: ["contratos-activos"] });
-      setModalOpen(false);
-      setSelectedContract(null);
+      setConfirmUpdateOpen(false);
+      setIsEditingProximoPago(false);
+      // Actualizar el contrato seleccionado con la nueva fecha
+      setSelectedContract({ ...selectedContract, proximo_pago: iso });
     } catch (err: any) {
       // eslint-disable-next-line no-console
       console.error("Error actualizando próximo pago:", err);
@@ -427,16 +432,36 @@ export default function ContratosActivos() {
                     </p>
                   </div>
 
-                  {/* Summary row: monto total / pago inicial / cantidad de pagos */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Summary row: monto total / monto pagado / saldo actual */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-muted/50 rounded-lg">
                     <div>
                       <p className="text-sm text-muted-foreground">
                         Monto total
                       </p>
-                      <p className="font-medium">
+                      <p className="font-semibold text-lg">
                         {formatCurrency(selectedContract?.monto_total ?? 0)}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Monto pagado
+                      </p>
+                      <p className="font-semibold text-lg text-green-600">
+                        {formatCurrency(selectedContract?.pagos_registrados ?? 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Saldo actual
+                      </p>
+                      <p className="font-semibold text-lg text-primary">
+                        {formatCurrency(selectedContract?.valor_restante ?? 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Additional info row: pago inicial / cantidad de pagos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <p className="text-sm text-muted-foreground">
                         Pago inicial
@@ -455,23 +480,61 @@ export default function ContratosActivos() {
                     </div>
                   </div>
 
-                  {/* Próximo pago editable */}
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Próximo pago
-                    </p>
-                    <input
-                      type="datetime-local"
-                      value={editingDate ?? ""}
-                      onChange={(e) => setEditingDate(e.target.value || null)}
-                      className="mt-1 block w-full rounded-md border p-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Fecha actual:{" "}
-                      {selectedContract?.proximo_pago
-                        ? formatDate(selectedContract.proximo_pago)
-                        : "-"}
-                    </p>
+                  {/* Próximo pago - solo editable con botón */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Próximo pago
+                      </p>
+                      {!isEditingProximoPago && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsEditingProximoPago(true)}
+                        >
+                          Editar
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {isEditingProximoPago ? (
+                      <div className="space-y-2">
+                        <input
+                          type="datetime-local"
+                          value={editingDate ?? ""}
+                          onChange={(e) => setEditingDate(e.target.value || null)}
+                          className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Resetear a la fecha original
+                              const val = selectedContract?.proximo_pago
+                                ? new Date(selectedContract.proximo_pago).toISOString().slice(0, 16)
+                                : "";
+                              setEditingDate(val || null);
+                              setIsEditingProximoPago(false);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setConfirmUpdateOpen(true)}
+                          >
+                            Guardar cambios
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {selectedContract?.proximo_pago
+                          ? formatDate(selectedContract.proximo_pago)
+                          : "No establecido"}
+                      </p>
+                    )}
                   </div>
 
                   {/* Pagos realizados table */}
@@ -527,30 +590,75 @@ export default function ContratosActivos() {
                 </div>
 
                 <DialogFooter>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setModalOpen(false);
-                        setSelectedContract(null);
-                      }}
-                    >
-                      Cerrar
-                    </Button>
-                    <Button
-                      onClick={async () => {
-                        await updateProximoPago();
-                      }}
-                    >
-                      Actualizar
-                    </Button>
+                  <div className="flex gap-2 justify-between w-full">
                     <Button
                       variant="destructive"
                       onClick={() => setAnularOpen(true)}
                     >
                       Anular contrato
                     </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setModalOpen(false);
+                        setSelectedContract(null);
+                        setIsEditingProximoPago(false);
+                      }}
+                    >
+                      Cerrar
+                    </Button>
                   </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmación para actualizar próximo pago */}
+            <Dialog open={confirmUpdateOpen} onOpenChange={(v) => setConfirmUpdateOpen(v)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirmar actualización</DialogTitle>
+                  <DialogDescription>
+                    ¿Estás seguro de que deseas actualizar la fecha del próximo pago?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fecha actual:</p>
+                    <p className="font-medium">
+                      {selectedContract?.proximo_pago
+                        ? formatDate(selectedContract.proximo_pago)
+                        : "No establecido"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nueva fecha:</p>
+                    <p className="font-medium">
+                      {editingDate
+                        ? new Date(editingDate).toLocaleString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : "No establecido"}
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setConfirmUpdateOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await updateProximoPago();
+                    }}
+                  >
+                    Confirmar actualización
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

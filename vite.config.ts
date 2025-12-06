@@ -34,14 +34,13 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    host: true,
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
     hmr: {
-      protocol: "ws",
-      host: "localhost",
-      port: 5173,
+      clientPort: 443,
     },
   },
 });
