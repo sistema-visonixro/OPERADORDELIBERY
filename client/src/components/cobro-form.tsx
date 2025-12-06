@@ -476,15 +476,33 @@ export default function CobroForm({ open, onOpenChange, onCreated }: Props) {
           .single();
         if (insertErr) throw insertErr;
         toast({ title: "Pago registrado" });
-        // Actualizar la suscripción: avanzar la proxima_fecha_de_pago tantos meses como se cobraron
+        // Actualizar la suscripción: avanzar al siguiente mes usando dia_de_pago_mensual
         try {
-          const baseIso =
-            selectedSub.proxima_fecha_de_pago ?? new Date().toISOString();
-          const monthsCharged = computeMonthsDueCount(
-            baseIso,
-            selectedSub.dia_de_pago_mensual
-          );
-          const newProx = addMonthsKeepDay(baseIso, monthsCharged);
+          const today = new Date();
+          const diaActual = today.getDate();
+          const mesActual = today.getMonth();
+          const añoActual = today.getFullYear();
+          
+          // Obtener el día de pago mensual (por defecto el día actual si no existe)
+          const diaDePago = selectedSub.dia_de_pago_mensual ?? diaActual;
+          
+          // Calcular el siguiente mes
+          let siguienteMes = mesActual + 1;
+          let siguienteAño = añoActual;
+          
+          if (siguienteMes > 11) {
+            siguienteMes = 0;
+            siguienteAño += 1;
+          }
+          
+          // Obtener el último día del siguiente mes para validar
+          const ultimoDiaDelMes = new Date(siguienteAño, siguienteMes + 1, 0).getDate();
+          const diaValido = Math.min(diaDePago, ultimoDiaDelMes);
+          
+          // Crear la nueva fecha de próximo pago
+          const nuevaFecha = new Date(siguienteAño, siguienteMes, diaValido);
+          const newProx = nuevaFecha.toISOString();
+          
           const { error: upErr } = await supabase
             .from("suscripciones")
             .update({ proxima_fecha_de_pago: newProx })

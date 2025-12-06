@@ -58,6 +58,23 @@ interface SubscriptionWithClient extends Subscription {
   projectName: string;
 }
 
+function monthsBetween(startInput?: string | Date | null, endInput?: Date) {
+  if (!startInput) return 0;
+  const start = typeof startInput === "string" ? new Date(startInput) : new Date(startInput as Date);
+  const end = endInput ?? new Date();
+  // normalize times to compare dates only
+  const sDay = start.getDate();
+  const sMonth = start.getMonth();
+  const sYear = start.getFullYear();
+  const eDay = end.getDate();
+  const eMonth = end.getMonth();
+  const eYear = end.getFullYear();
+  let months = (eYear - sYear) * 12 + (eMonth - sMonth);
+  // if the end day is before the start day, reduce one month (not a full month yet)
+  if (eDay < sDay) months -= 1;
+  return Math.max(0, months);
+}
+
 function SubscriptionCard({
   subscription,
   onToggleStatus,
@@ -559,6 +576,7 @@ export default function Subscriptions() {
                   <TableHead>Proyecto</TableHead>
                   <TableHead>Mensualidad</TableHead>
                   <TableHead>Inicio</TableHead>
+                  <TableHead>Meses transcurridos</TableHead>
                   <TableHead>Próximo pago</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Activo</TableHead>
@@ -584,6 +602,9 @@ export default function Subscriptions() {
                     </TableCell>
                     <TableCell>
                       {s.startDate ? formatDate(s.startDate) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {s.startDate ? `${monthsBetween(s.startDate)} meses` : "-"}
                     </TableCell>
                     <TableCell>
                       {s.nextPaymentDate ? formatDate(s.nextPaymentDate) : "-"}
