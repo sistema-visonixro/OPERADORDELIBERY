@@ -143,6 +143,22 @@ export default function Configuracion() {
           </CardContent>
         </Card>
 
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="destructive"
+            onClick={() => {
+              try {
+                localStorage.removeItem("admon-auth");
+              } catch (e) {
+                /* noop */
+              }
+              if (typeof window !== "undefined") window.location.href = "/login";
+            }}
+          >
+            Cerrar sesión
+          </Button>
+        </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader>
