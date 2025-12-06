@@ -20,6 +20,8 @@ import ProyectoDetalle from "@/pages/proyecto-detalle";
 import ContratosActivos from "@/pages/contratos-activos";
 import Configuracion from "@/pages/configuracion";
 import NotFound from "@/pages/not-found";
+import Login from "@/pages/login";
+import React, { useEffect, useState } from "react";
 
 function Router() {
   return (
@@ -42,6 +44,19 @@ function Router() {
 }
 
 function App() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("admon-auth");
+      setAuthed(v === "true");
+    } catch (e) {
+      setAuthed(false);
+    }
+  }, []);
+
+  if (authed === null) return null;
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
