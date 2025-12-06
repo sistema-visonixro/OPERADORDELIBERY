@@ -87,6 +87,18 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* Login entrance animation */
+@keyframes login-enter {
+  0% { opacity: 0; transform: translateY(8px) scale(.98); }
+  60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-login-enter {
+  animation: login-enter 420ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);

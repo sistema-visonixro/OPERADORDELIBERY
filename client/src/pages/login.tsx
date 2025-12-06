@@ -86,10 +86,11 @@ export default function Login({ onSuccess }: Props) {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-muted p-4">
-      <div className="w-[420px] max-w-full">
-        <Card>
-          <CardContent className="pt-6">
+    <div className="dark">
+      <div className="h-screen flex items-center justify-center bg-background text-foreground p-4">
+        <div className="w-[420px] max-w-full">
+          <Card>
+            <CardContent className="pt-6 animate-login-enter">
             <div className="flex flex-col items-center mb-4">
               <img src="/vsr.png" alt="Logo" className="h-24 mb-2" />
             </div>
@@ -117,8 +118,9 @@ export default function Login({ onSuccess }: Props) {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
