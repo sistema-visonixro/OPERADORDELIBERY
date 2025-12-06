@@ -340,7 +340,7 @@ export default function Clients() {
       <Dialog open={claveOpen} onOpenChange={(v) => setClaveOpen(v)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar acción</DialogTitle>
+            <DialogTitle className="text-blue-600 dark:text-blue-400">Confirmar acción</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <p className="text-sm text-muted-foreground">
@@ -351,7 +351,7 @@ export default function Clients() {
               type="password"
               value={claveValue}
               onChange={(e) => setClaveValue(e.target.value)}
-              className="block w-full rounded-md border p-2"
+              className="block w-full rounded-md border p-2 text-blue-600 dark:text-blue-400"
             />
           </div>
           <DialogFooter>
