@@ -161,6 +161,22 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => {
+                try {
+                  localStorage.removeItem("admon-auth");
+                } catch (e) {
+                  /* noop */
+                }
+                // redirect to /login to show the login screen after logout
+                if (typeof window !== "undefined") window.location.href = "/login";
+              }}
+            >
+              <Settings className="h-5 w-5" />
+              <span className="font-medium">Cerrar sesión</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

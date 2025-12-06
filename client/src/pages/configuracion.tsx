@@ -18,40 +18,6 @@ import { formatDate } from "@/lib/utils";
 
 export default function Configuracion() {
   const { toast } = useToast();
-  function logout() {
-    try {
-      // mark as logged out explicitly to avoid stale truthy values from cached bundles
-      localStorage.setItem("admon-auth", "false");
-      toast({ title: "Sesión cerrada" });
-    } catch (e) {
-      // ignore
-    }
-
-    // Try to unregister service workers and clear caches to avoid serving stale bundles
-    (async () => {
-      try {
-        if (typeof window !== "undefined") {
-          if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-
-          if ('caches' in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-
-          // Force a reload with cache-busting query to ensure latest assets are fetched
-          const url = new URL(window.location.href);
-          url.searchParams.set('_sw', String(Date.now()));
-          window.location.replace(url.toString());
-        }
-      } catch (e) {
-        // fallback: simple reload
-        window.location.reload();
-      }
-    })();
-  }
 
   const { data: cfg, isLoading } = useQuery({
     queryKey: ["configuracion"],
@@ -72,8 +38,6 @@ export default function Configuracion() {
   const [telefono, setTelefono] = useState("");
   const [clave, setClave] = useState("");
   const [open, setOpen] = useState(false);
-  const CLAVE_REGEX = /(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+/;
-  const isClaveValid = clave ? CLAVE_REGEX.test(clave) : true; // allow empty
 
   useEffect(() => {
     if (cfg) {
@@ -87,15 +51,6 @@ export default function Configuracion() {
   }, [cfg]);
 
   async function onSave() {
-    // validate clave if provided
-    if (clave && !CLAVE_REGEX.test(clave)) {
-      toast({
-        title: "Clave inválida",
-        description: "La clave debe contener al menos una letra mayúscula, un número y un símbolo",
-        variant: "destructive",
-      });
-      return;
-    }
     try {
       const payload = {
         nombre: nombre || null,
@@ -148,11 +103,8 @@ export default function Configuracion() {
                   Información que aparece en facturas y documentos.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div>
                 <Button onClick={() => setOpen(true)}>Editar</Button>
-                <Button variant="secondary" onClick={logout}>
-                  Cerrar sesión
-                </Button>
               </div>
             </div>
 
@@ -248,7 +200,6 @@ export default function Configuracion() {
                   value={clave}
                   onChange={(e) => setClave(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground mt-1">La clave debe contener al menos una mayúscula, un número y un símbolo. Dejar en blanco para desactivar.</p>
               </div>
             </div>
 
@@ -283,7 +234,6 @@ export default function Configuracion() {
                     await onSave();
                     setOpen(false);
                   }}
-                  disabled={!!clave && !isClaveValid}
                 >
                   Guardar
                 </Button>

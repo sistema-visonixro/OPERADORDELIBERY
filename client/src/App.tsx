@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,11 +23,28 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import React, { useEffect, useState } from "react";
 
-// Router moved inside App to allow auth-based redirects
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Dashboard} />
+      <Route path="/clientes/proyecto/ventas" component={ProyectoVentas} />
+      <Route path="/clientes/proyecto/:id" component={ProyectoDetalle} />
+      <Route path="/clientes/proyecto" component={Proyecto} />
+      <Route path="/clientes/:id" component={ClienteDetalle} />
+      <Route path="/clientes" component={Clients} />
+      <Route path="/contratos-activos" component={ContratosActivos} />
+      <Route path="/configuracion" component={Configuracion} />
+      <Route path="/pagos" component={Payments} />
+      <Route path="/pagos/estado-de-cuentas" component={EstadoCuentas} />
+      <Route path="/suscripciones" component={Subscriptions} />
+      <Route path="/estadisticas" component={Statistics} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
 
 function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     try {
@@ -36,31 +53,7 @@ function App() {
     } catch (e) {
       setAuthed(false);
     }
-    // sync across tabs
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "admon-auth") {
-        try {
-          const v = localStorage.getItem("admon-auth");
-          setAuthed(v === "true");
-        } catch (err) {
-          setAuthed(false);
-        }
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
-  // once we know auth state, redirect appropriately
-  useEffect(() => {
-    if (authed === null) return;
-    if (!authed) {
-      // force URL to /login so user cannot access other routes
-      if (location !== "/login") setLocation("/login");
-    } else {
-      // if already authenticated and on /login, send to root
-      if (location === "/login") setLocation("/");
-    }
-  }, [authed, location, setLocation]);
 
   if (authed === null) return null;
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
@@ -75,33 +68,14 @@ function App() {
         <TooltipProvider>
           <SidebarProvider style={sidebarStyle as React.CSSProperties}>
             <div className="flex h-screen w-full">
-              {authed && <AppSidebar />}
+              <AppSidebar />
               <div className="flex flex-col flex-1 overflow-hidden">
-                {authed && (
-                  <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    <ThemeToggle />
-                  </header>
-                )}
+                <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <ThemeToggle />
+                </header>
                 <main className="flex-1 overflow-auto">
-                  <Switch>
-                    <Route path="/login">
-                      {() => <Login onSuccess={() => setAuthed(true)} />}
-                    </Route>
-                    <Route path="/" component={Dashboard} />
-                    <Route path="/clientes/proyecto/ventas" component={ProyectoVentas} />
-                    <Route path="/clientes/proyecto/:id" component={ProyectoDetalle} />
-                    <Route path="/clientes/proyecto" component={Proyecto} />
-                    <Route path="/clientes/:id" component={ClienteDetalle} />
-                    <Route path="/clientes" component={Clients} />
-                    <Route path="/contratos-activos" component={ContratosActivos} />
-                    <Route path="/configuracion" component={Configuracion} />
-                    <Route path="/pagos" component={Payments} />
-                    <Route path="/pagos/estado-de-cuentas" component={EstadoCuentas} />
-                    <Route path="/suscripciones" component={Subscriptions} />
-                    <Route path="/estadisticas" component={Statistics} />
-                    <Route component={NotFound} />
-                  </Switch>
+                  <Router />
                 </main>
               </div>
             </div>
