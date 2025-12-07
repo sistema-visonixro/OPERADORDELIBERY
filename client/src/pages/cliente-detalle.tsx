@@ -24,14 +24,19 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import CobroForm from "@/components/cobro-form";
+import { Progress } from "@/components/ui/progress";
+import { TrendingUp, CheckCircle2, Clock } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function ClienteDetalle() {
   const [match, params] = useRoute("/clientes/:id");
+  const [, navigate] = useLocation();
   const id = params?.id as string | undefined;
   const [cliente, setCliente] = useState<any | null>(null);
   const [pagos, setPagos] = useState<any[]>([]);
   const [contratos, setContratos] = useState<any[]>([]);
   const [suscripciones, setSuscripciones] = useState<any[]>([]);
+  const [avances, setAvances] = useState<any[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -66,7 +71,7 @@ export default function ClienteDetalle() {
       if (!id) return;
       setLoading(true);
       try {
-        const [cRes, pagosRes, contratosRes, subsRes] = await Promise.all([
+        const [cRes, pagosRes, contratosRes, subsRes, avancesRes] = await Promise.all([
           supabase.from("clientes").select("*").eq("id", id).limit(1).single(),
           supabase
             .from("pagos")
@@ -85,12 +90,18 @@ export default function ClienteDetalle() {
             .from("suscripciones")
             .select("id,mensualidad,proxima_fecha_de_pago,proyecto,is_active,cliente")
             .eq("cliente", id),
+          supabase
+            .from("avances")
+            .select("id,nombre_proyecto,porcentaje_avance,estado,total_caracteristicas,caracteristicas_completadas")
+            .eq("cliente_id", id)
+            .order("fecha_creacion", { ascending: false }),
         ]);
 
         if (!cRes.error) setCliente(cRes.data);
         setPagos(Array.isArray(pagosRes.data) ? pagosRes.data : []);
         setContratos(Array.isArray(contratosRes.data) ? contratosRes.data : []);
         setSuscripciones(Array.isArray(subsRes.data) ? subsRes.data : []);
+        setAvances(Array.isArray(avancesRes.data) ? avancesRes.data : []);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error("Error cargando detalle de cliente:", err);
@@ -635,6 +646,93 @@ export default function ClienteDetalle() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Card de Avances de Proyectos */}
+            {avances.length > 0 && (
+              <div className="mt-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Avances de Proyectos
+                    </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate("/avances")}
+                    >
+                      Ver todos
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {avances.map((avance) => (
+                        <Card
+                          key={avance.id}
+                          className="cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => navigate(`/avances/${avance.id}`)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <h3 className="font-semibold text-sm line-clamp-2">
+                                  {avance.nombre_proyecto}
+                                </h3>
+                                <Badge
+                                  variant={
+                                    avance.estado === "completado"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className={
+                                    avance.estado === "completado"
+                                      ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                                      : avance.estado === "en_progreso"
+                                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                      : ""
+                                  }
+                                >
+                                  {avance.estado === "completado" ? (
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <Clock className="h-3 w-3 mr-1" />
+                                  )}
+                                  {avance.estado === "completado"
+                                    ? "Completado"
+                                    : avance.estado === "en_progreso"
+                                    ? "En Progreso"
+                                    : avance.estado}
+                                </Badge>
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    Progreso
+                                  </span>
+                                  <span className="font-bold text-primary">
+                                    {Number(avance.porcentaje_avance).toFixed(0)}%
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={Number(avance.porcentaje_avance)}
+                                  className="h-2"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  {avance.caracteristicas_completadas} de{" "}
+                                  {avance.total_caracteristicas} características
+                                  completadas
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
