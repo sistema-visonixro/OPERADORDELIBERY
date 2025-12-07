@@ -9,6 +9,7 @@ import {
   Code2,
   ShoppingCart,
   FileText,
+  TrendingUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const navigationItems = [
   { title: "Suscripciones", url: "/suscripciones", icon: RefreshCcw },
   { title: "Pagos", url: "/pagos", icon: CreditCard },
   { title: "Estado de cuentas", url: "/pagos/estado-de-cuentas", icon: FileText },
+  { title: "Avances", url: "/avances", icon: TrendingUp },
   { title: "Estadisticas", url: "/estadisticas", icon: BarChart3 },
 ];
 

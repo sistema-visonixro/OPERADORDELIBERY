@@ -131,3 +131,55 @@ export interface MonthlyRevenue {
   subscriptions: number;
   oneTime: number;
 }
+
+// Avances (Project Progress) types
+export const AVANCE_ESTADOS = ["en_progreso", "completado", "pausado", "cancelado"] as const;
+export type AvanceEstado = typeof AVANCE_ESTADOS[number];
+
+export interface Avance {
+  id: string;
+  cliente_id: string;
+  contrato_id: string;
+  nombre_proyecto: string;
+  descripcion: string | null;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+  total_caracteristicas: number;
+  caracteristicas_completadas: number;
+  porcentaje_avance: number;
+  estado: AvanceEstado;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AvanceCaracteristica {
+  id: string;
+  avance_id: string;
+  nombre: string;
+  descripcion: string | null;
+  completada: boolean;
+  fecha_completado: string | null;
+  orden: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsertAvance {
+  cliente_id: string;
+  contrato_id: string;
+  nombre_proyecto: string;
+  descripcion?: string | null;
+}
+
+export interface InsertAvanceCaracteristica {
+  avance_id: string;
+  nombre: string;
+  descripcion?: string | null;
+  orden?: number;
+}
+
+export interface AvanceWithDetails extends Avance {
+  cliente_nombre: string;
+  proyecto_nombre: string;
+  caracteristicas: AvanceCaracteristica[];
+}

@@ -19,6 +19,8 @@ import ClienteDetalle from "@/pages/cliente-detalle";
 import ProyectoDetalle from "@/pages/proyecto-detalle";
 import ContratosActivos from "@/pages/contratos-activos";
 import Configuracion from "@/pages/configuracion";
+import Avances from "@/pages/avances";
+import AvanceDetalle from "@/pages/avance-detalle";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import React, { useEffect, useState } from "react";
@@ -38,6 +40,8 @@ function Router() {
       <Route path="/pagos/estado-de-cuentas" component={EstadoCuentas} />
       <Route path="/suscripciones" component={Subscriptions} />
       <Route path="/estadisticas" component={Statistics} />
+      <Route path="/avances/:id" component={AvanceDetalle} />
+      <Route path="/avances" component={Avances} />
       <Route component={NotFound} />
     </Switch>
   );
