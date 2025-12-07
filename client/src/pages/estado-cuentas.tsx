@@ -262,8 +262,23 @@ export default function EstadoCuentas() {
                     if (selectedClient) q = q.eq("cliente_id", selectedClient);
                     if (selectedTipo && selectedTipo !== "all") q = q.eq("tipo", selectedTipo);
                     if (selectedProyecto && selectedProyecto !== "none") q = q.eq("proyecto_id", selectedProyecto);
-                    if (fechaDesde) q = q.gte("fecha", fechaDesde);
-                    if (fechaHasta) q = q.lte("fecha", fechaHasta);
+                    
+                    // Filtrar por fecha completa (todo el día) ajustando a horario hondureño (UTC-6)
+                    if (fechaDesde) {
+                      // Inicio del día en Honduras, convertir a UTC para la consulta
+                      const fechaDesdeInicio = new Date(fechaDesde + 'T00:00:00');
+                      // Sumar 6 horas para convertir de Honduras a UTC
+                      fechaDesdeInicio.setHours(fechaDesdeInicio.getHours() + 6);
+                      q = q.gte("fecha", fechaDesdeInicio.toISOString());
+                    }
+                    if (fechaHasta) {
+                      // Final del día en Honduras, convertir a UTC para la consulta
+                      const fechaHastaFin = new Date(fechaHasta + 'T23:59:59');
+                      // Sumar 6 horas para convertir de Honduras a UTC
+                      fechaHastaFin.setHours(fechaHastaFin.getHours() + 6);
+                      q = q.lte("fecha", fechaHastaFin.toISOString());
+                    }
+                    
                     const { data, error } = await q.order("fecha", { ascending: false });
                     if (error) throw error;
                     setPagosResults(Array.isArray(data) ? data : []);
