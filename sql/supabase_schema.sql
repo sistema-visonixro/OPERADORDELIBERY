@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   next_payment_date timestamptz
 );
 
+-- Estado de Cuenta table (Movimientos/Transacciones)
+CREATE TABLE IF NOT EXISTS estado_cuenta (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_id uuid NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  proyecto_id uuid NOT NULL REFERENCES proyectos(id) ON DELETE CASCADE,
+  tipo text NOT NULL CHECK (tipo IN ('contrato', 'suscripcion')),
+  monto numeric(10,2) NOT NULL,
+  saldo_actual numeric(10,2) NOT NULL,
+  nota text,
+  fecha timestamptz DEFAULT now(),
+  created_at timestamptz DEFAULT now()
+);
+
 -- Users table (for future auth)
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,6 +77,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments(client_id);
 CREATE INDEX IF NOT EXISTS idx_payments_due_date ON payments(due_date);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_client_id ON subscriptions(client_id);
+CREATE INDEX IF NOT EXISTS idx_estado_cuenta_cliente_id ON estado_cuenta(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_estado_cuenta_proyecto_id ON estado_cuenta(proyecto_id);
+CREATE INDEX IF NOT EXISTS idx_estado_cuenta_tipo ON estado_cuenta(tipo);
+CREATE INDEX IF NOT EXISTS idx_estado_cuenta_fecha ON estado_cuenta(fecha);
 
 -- Notes:
 -- - Subscription-specific fields (pago de instalacion, fecha inicial) are modeled as separate rows in payments/subscriptions

@@ -48,6 +48,19 @@ export const subscriptions = pgTable("subscriptions", {
   nextPaymentDate: timestamp("next_payment_date"),
 });
 
+// Estado de Cuenta table (Movimientos/Transacciones)
+export const estadoCuenta = pgTable("estado_cuenta", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clienteId: varchar("cliente_id").notNull(),
+  proyectoId: varchar("proyecto_id").notNull(),
+  tipo: text("tipo").notNull().$type<'contrato' | 'suscripcion'>(),
+  monto: numeric("monto", { precision: 10, scale: 2 }).notNull(),
+  saldoActual: numeric("saldo_actual", { precision: 10, scale: 2 }).notNull(),
+  nota: text("nota"),
+  fecha: timestamp("fecha").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Users table (for future auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -69,6 +82,11 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   id: true,
 });
 
+export const insertEstadoCuentaSchema = createInsertSchema(estadoCuenta).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -83,6 +101,9 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+export type EstadoCuenta = typeof estadoCuenta.$inferSelect;
+export type InsertEstadoCuenta = z.infer<typeof insertEstadoCuentaSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

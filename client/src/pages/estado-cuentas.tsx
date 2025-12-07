@@ -252,27 +252,37 @@ export default function EstadoCuentas() {
             </div>
 
             <div className="flex items-end gap-2">
-              <Button onClick={async () => {
-                setLoading(true);
-                try {
-                  let q = supabase.from("pagos").select(
-                    "id,fecha_de_creacion,tipo,cliente,proyecto,monto,notas"
-                  );
-                  if (selectedClient) q = q.eq("cliente", selectedClient);
-                  if (selectedTipo && selectedTipo !== "all") q = q.eq("tipo", selectedTipo);
-                  if (selectedProyecto && selectedProyecto !== "none") q = q.eq("proyecto", selectedProyecto);
-                  if (fechaDesde) q = q.gte("fecha_de_creacion", fechaDesde);
-                  if (fechaHasta) q = q.lte("fecha_de_creacion", fechaHasta);
-                  const { data, error } = await q.order("fecha_de_creacion", { ascending: false });
-                  if (error) throw error;
-                  setPagosResults(Array.isArray(data) ? data : []);
-                } catch (err) {
-                  // eslint-disable-next-line no-console
-                  console.error("Error buscando pagos:", err);
-                } finally {
-                  setLoading(false);
+              <Button 
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    let q = supabase.from("estado_cuenta").select(
+                      "id,fecha,tipo,cliente_id,proyecto_id,monto,saldo_actual,nota"
+                    );
+                    if (selectedClient) q = q.eq("cliente_id", selectedClient);
+                    if (selectedTipo && selectedTipo !== "all") q = q.eq("tipo", selectedTipo);
+                    if (selectedProyecto && selectedProyecto !== "none") q = q.eq("proyecto_id", selectedProyecto);
+                    if (fechaDesde) q = q.gte("fecha", fechaDesde);
+                    if (fechaHasta) q = q.lte("fecha", fechaHasta);
+                    const { data, error } = await q.order("fecha", { ascending: false });
+                    if (error) throw error;
+                    setPagosResults(Array.isArray(data) ? data : []);
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error("Error buscando movimientos:", err);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={
+                  !selectedClient || 
+                  !selectedTipo || 
+                  selectedTipo === "all" || 
+                  !selectedProyecto || 
+                  !fechaDesde || 
+                  !fechaHasta
                 }
-              }}>
+              >
                 Buscar
               </Button>
               <Button variant="ghost" onClick={() => {
@@ -306,16 +316,21 @@ export default function EstadoCuentas() {
                 size="sm"
                 onClick={() => {
                   const client: any = clients.find((c: any) => c.id === selectedClient) || {};
+                  const proyecto: any = projects.find((p: any) => p.id === selectedProyecto) || {};
+                  const tipoLabel = selectedTipo === "contrato" ? "Contrato" : selectedTipo === "suscripcion" ? "Suscripción" : "Todos";
+                  
                   const rows = (pagosResults || [])
                     .map(
                       (p: any) => `
                         <tr>
-                          <td style="padding:8px;border:1px solid #ddd">${client.nombre ?? (p.cliente ?? "-")}</td>
+                          <td style="padding:8px;border:1px solid #ddd">${client.nombre ?? (p.cliente_id ?? "-")}</td>
                           <td style="padding:8px;border:1px solid #ddd">${client.rtn ?? "-"}</td>
-                          <td style="padding:8px;border:1px solid #ddd">${getPaymentTypeLabel(p.tipo)}</td>
-                          <td style="padding:8px;border:1px solid #ddd">${projects.find((pr: any) => pr.id === p.proyecto)?.nombre ?? p.proyecto}</td>
-                          <td style="padding:8px;border:1px solid #ddd">${formatDate(p.fecha_de_creacion)}</td>
+                          <td style="padding:8px;border:1px solid #ddd;text-transform:capitalize">${p.tipo}</td>
+                          <td style="padding:8px;border:1px solid #ddd">${projects.find((pr: any) => pr.id === p.proyecto_id)?.nombre ?? p.proyecto_id}</td>
+                          <td style="padding:8px;border:1px solid #ddd">${formatDate(p.fecha)}</td>
                           <td style="padding:8px;border:1px solid #ddd">${formatCurrency(Number(p.monto ?? 0))}</td>
+                          <td style="padding:8px;border:1px solid #ddd">${formatCurrency(Number(p.saldo_actual ?? 0))}</td>
+                          <td style="padding:8px;border:1px solid #ddd">${p.nota ?? "-"}</td>
                         </tr>`
                     )
                     .join("\n");
@@ -328,8 +343,11 @@ export default function EstadoCuentas() {
                         <title>Estado de Cuenta</title>
                         <style>
                           body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 24px; color:#111827 }
-                          .header { display:flex; align-items:center; gap:16px; }
+                          .header { display:flex; align-items:center; gap:16px; margin-bottom: 20px; }
                           .logo { height:56px }
+                          .info-section { margin-top: 16px; padding: 16px; background: #f9fafb; border-radius: 8px; }
+                          .info-row { display: flex; gap: 32px; margin-bottom: 8px; }
+                          .info-label { font-weight: 600; min-width: 100px; }
                           table { border-collapse: collapse; width:100%; margin-top:16px }
                           th, td { padding:8px; border:1px solid #ddd; text-align:left }
                           th { background:#f3f4f6; }
@@ -339,11 +357,26 @@ export default function EstadoCuentas() {
                         <div class="header">
                           <img src="/vsr.png" class="logo" alt="logo" />
                           <div>
-                            <h2>Estado de Cuenta</h2>
-                            <div>Cliente: ${client.nombre ?? "-"}</div>
-                            <div>RTN: ${client.rtn ?? "-"}</div>
+                            <h2 style="margin: 0 0 8px 0;">Estado de Cuenta</h2>
+                            <div style="color: #6b7280; font-size: 14px;">Reporte de Movimientos Financieros</div>
                           </div>
                         </div>
+                        
+                        <div class="info-section">
+                          <div class="info-row">
+                            <div><span class="info-label">Cliente:</span> ${client.nombre ?? "-"}</div>
+                            <div><span class="info-label">RTN:</span> ${client.rtn ?? "-"}</div>
+                          </div>
+                          <div class="info-row">
+                            <div><span class="info-label">Proyecto:</span> ${proyecto.nombre ?? "-"}</div>
+                            <div><span class="info-label">Tipo:</span> ${tipoLabel}</div>
+                          </div>
+                          <div class="info-row">
+                            <div><span class="info-label">Fecha desde:</span> ${fechaDesde ? formatDate(fechaDesde) : "-"}</div>
+                            <div><span class="info-label">Fecha hasta:</span> ${fechaHasta ? formatDate(fechaHasta) : "-"}</div>
+                          </div>
+                        </div>
+                        
                         <table>
                           <thead>
                             <tr>
@@ -353,6 +386,8 @@ export default function EstadoCuentas() {
                               <th>Proyecto</th>
                               <th>Fecha</th>
                               <th>Monto</th>
+                              <th>Saldo Actual</th>
+                              <th>Nota</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -382,22 +417,26 @@ export default function EstadoCuentas() {
                 <TableHead>Proyecto</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Monto</TableHead>
+                <TableHead>Saldo Actual</TableHead>
+                <TableHead>Nota</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pagosResults.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">No hay datos que mostrar.</TableCell>
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">No hay datos que mostrar.</TableCell>
                 </TableRow>
               ) : (
                 pagosResults.map((p: any) => (
                   <TableRow key={p.id}>
-                    <TableCell>{clients.find((c: any) => c.id === p.cliente)?.nombre ?? p.cliente}</TableCell>
-                    <TableCell>{clients.find((c: any) => c.id === p.cliente)?.rtn ?? "-"}</TableCell>
-                    <TableCell>{getPaymentTypeLabel(p.tipo)}</TableCell>
-                    <TableCell>{projects.find((pr: any) => pr.id === p.proyecto)?.nombre ?? p.proyecto}</TableCell>
-                    <TableCell>{formatDate(p.fecha_de_creacion)}</TableCell>
+                    <TableCell>{clients.find((c: any) => c.id === p.cliente_id)?.nombre ?? p.cliente_id}</TableCell>
+                    <TableCell>{clients.find((c: any) => c.id === p.cliente_id)?.rtn ?? "-"}</TableCell>
+                    <TableCell className="capitalize">{p.tipo}</TableCell>
+                    <TableCell>{projects.find((pr: any) => pr.id === p.proyecto_id)?.nombre ?? p.proyecto_id}</TableCell>
+                    <TableCell>{formatDate(p.fecha)}</TableCell>
                     <TableCell>{formatCurrency(Number(p.monto ?? 0))}</TableCell>
+                    <TableCell>{formatCurrency(Number(p.saldo_actual ?? 0))}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{p.nota ?? "-"}</TableCell>
                   </TableRow>
                 ))
               )}

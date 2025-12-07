@@ -154,6 +154,52 @@ export default function VentaForm({
       if (e) throw e;
       toast({ title: "Venta registrada" });
 
+      // Registrar en estado_cuenta según el tipo
+      try {
+        if (tipo === "venta_total") {
+          // CONTRATO: Registrar dos movimientos
+          // 1. Registro del contrato adquirido (monto total)
+          await supabase.from("estado_cuenta").insert([{
+            cliente_id: payload.cliente,
+            proyecto_id: payload.proyecto,
+            tipo: "contrato",
+            monto: total_a_pagar,
+            saldo_actual: total_a_pagar,
+            nota: "CONTRATO ADQUIRIDO",
+            fecha: payload.fecha,
+          }]);
+
+          // 2. Registro del pago inicial
+          if (pago_inicial > 0) {
+            await supabase.from("estado_cuenta").insert([{
+              cliente_id: payload.cliente,
+              proyecto_id: payload.proyecto,
+              tipo: "contrato",
+              monto: pago_inicial,
+              saldo_actual: total_a_pagar - pago_inicial,
+              nota: "PAGO INICIAL",
+              fecha: payload.fecha,
+            }]);
+          }
+        } else if (tipo === "suscripcion") {
+          // SUSCRIPCIÓN: Registrar pago inicial
+          if (pago_inicial > 0) {
+            await supabase.from("estado_cuenta").insert([{
+              cliente_id: payload.cliente,
+              proyecto_id: payload.proyecto,
+              tipo: "suscripcion",
+              monto: pago_inicial,
+              saldo_actual: pago_inicial,
+              nota: "PAGO INICIAL",
+              fecha: payload.fecha,
+            }]);
+          }
+        }
+      } catch (estErr) {
+        console.error("Error registrando en estado_cuenta:", estErr);
+        // No bloquear la venta por esto
+      }
+
       // Si es suscripción, crear registro en la tabla `suscripciones`
       if (tipo === "suscripcion") {
         try {

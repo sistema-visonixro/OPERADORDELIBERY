@@ -528,6 +528,23 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
           .single();
         if (insertErr) throw insertErr;
         toast({ title: "Pago registrado" });
+
+        // Registrar en estado_cuenta para suscripción
+        try {
+          const mensualidad = selectedSub.mensualidad || 0;
+          await supabase.from("estado_cuenta").insert([{
+            cliente_id: payload.cliente,
+            proyecto_id: payload.proyecto,
+            tipo: "suscripcion",
+            monto: monto,
+            saldo_actual: mensualidad - monto,
+            nota: "PAGO DE SUSCRIPCIÓN",
+            fecha: payload.fecha_de_creacion,
+          }]);
+        } catch (estErr) {
+          console.error("Error registrando en estado_cuenta:", estErr);
+        }
+
         // Actualizar la suscripción: avanzar al siguiente mes usando dia_de_pago_mensual
         try {
           const today = new Date();
@@ -614,6 +631,23 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
           .single();
         if (insertErr) throw insertErr;
         toast({ title: "Pago registrado" });
+
+        // Registrar en estado_cuenta para contrato
+        try {
+          const nuevoRestante = restante - monto;
+          await supabase.from("estado_cuenta").insert([{
+            cliente_id: payload.cliente,
+            proyecto_id: payload.proyecto,
+            tipo: "contrato",
+            monto: monto,
+            saldo_actual: nuevoRestante,
+            nota: "ABONO A CONTRATO",
+            fecha: payload.fecha_de_creacion,
+          }]);
+        } catch (estErr) {
+          console.error("Error registrando en estado_cuenta:", estErr);
+        }
+
         // Si el pago completa el restante, actualizar el estado del contrato a 'cancelado'
         const epsilon = 0.005;
         if (Math.abs(monto - restante) <= epsilon) {
