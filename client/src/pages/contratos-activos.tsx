@@ -10,7 +10,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials, hondurasToUTC, utcToHondurasDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -130,10 +130,19 @@ export default function ContratosActivos() {
 
   function openContractModal(contract: any) {
     setSelectedContract(contract);
-    // initialize editingDate as local datetime-local string
-    const val = contract?.proximo_pago
-      ? new Date(contract.proximo_pago).toISOString().slice(0, 16)
-      : "";
+    // Convertir la fecha UTC a fecha local para el input datetime-local
+    let val = "";
+    if (contract?.proximo_pago) {
+      const hondurasDate = utcToHondurasDate(contract.proximo_pago);
+      if (hondurasDate) {
+        const year = hondurasDate.getFullYear();
+        const month = String(hondurasDate.getMonth() + 1).padStart(2, '0');
+        const day = String(hondurasDate.getDate()).padStart(2, '0');
+        const hours = String(hondurasDate.getHours()).padStart(2, '0');
+        const minutes = String(hondurasDate.getMinutes()).padStart(2, '0');
+        val = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+    }
     setEditingDate(val || null);
     setIsEditingProximoPago(false);
     setModalOpen(true);
@@ -165,7 +174,7 @@ export default function ContratosActivos() {
   async function updateProximoPago() {
     if (!selectedContract) return;
     try {
-      const iso = editingDate ? new Date(editingDate).toISOString() : null;
+      const iso = editingDate ? hondurasToUTC(editingDate) : null;
       const { error } = await supabase
         .from("contratos")
         .update({ proximo_pago: iso })
@@ -511,9 +520,18 @@ export default function ContratosActivos() {
                             variant="outline"
                             onClick={() => {
                               // Resetear a la fecha original
-                              const val = selectedContract?.proximo_pago
-                                ? new Date(selectedContract.proximo_pago).toISOString().slice(0, 16)
-                                : "";
+                              let val = "";
+                              if (selectedContract?.proximo_pago) {
+                                const hondurasDate = utcToHondurasDate(selectedContract.proximo_pago);
+                                if (hondurasDate) {
+                                  const year = hondurasDate.getFullYear();
+                                  const month = String(hondurasDate.getMonth() + 1).padStart(2, '0');
+                                  const day = String(hondurasDate.getDate()).padStart(2, '0');
+                                  const hours = String(hondurasDate.getHours()).padStart(2, '0');
+                                  const minutes = String(hondurasDate.getMinutes()).padStart(2, '0');
+                                  val = `${year}-${month}-${day}T${hours}:${minutes}`;
+                                }
+                              }
                               setEditingDate(val || null);
                               setIsEditingProximoPago(false);
                             }}

@@ -43,7 +43,7 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate, getPaymentTypeLabel } from "@/lib/utils";
+import { formatCurrency, formatDate, getPaymentTypeLabel, getHondurasDayStartUTC, getHondurasDayEndUTC } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 
 export default function EstadoCuentas() {
@@ -263,20 +263,16 @@ export default function EstadoCuentas() {
                     if (selectedTipo && selectedTipo !== "all") q = q.eq("tipo", selectedTipo);
                     if (selectedProyecto && selectedProyecto !== "none") q = q.eq("proyecto_id", selectedProyecto);
                     
-                    // Filtrar por fecha completa (todo el día) ajustando a horario hondureño (UTC-6)
+                    // Filtrar por fecha completa (todo el día) en horario hondureño
                     if (fechaDesde) {
-                      // Inicio del día en Honduras, convertir a UTC para la consulta
-                      const fechaDesdeInicio = new Date(fechaDesde + 'T00:00:00');
-                      // Sumar 6 horas para convertir de Honduras a UTC
-                      fechaDesdeInicio.setHours(fechaDesdeInicio.getHours() + 6);
-                      q = q.gte("fecha", fechaDesdeInicio.toISOString());
+                      // Convertir inicio del día de Honduras a UTC
+                      const utcStart = getHondurasDayStartUTC(fechaDesde);
+                      q = q.gte("fecha", utcStart);
                     }
                     if (fechaHasta) {
-                      // Final del día en Honduras, convertir a UTC para la consulta
-                      const fechaHastaFin = new Date(fechaHasta + 'T23:59:59');
-                      // Sumar 6 horas para convertir de Honduras a UTC
-                      fechaHastaFin.setHours(fechaHastaFin.getHours() + 6);
-                      q = q.lte("fecha", fechaHastaFin.toISOString());
+                      // Convertir final del día de Honduras a UTC
+                      const utcEnd = getHondurasDayEndUTC(fechaHasta);
+                      q = q.lte("fecha", utcEnd);
                     }
                     
                     const { data, error } = await q.order("fecha", { ascending: false });

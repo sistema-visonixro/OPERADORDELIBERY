@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { nowInHondurasAsUTC } from "@/lib/utils";
 
 type VentaRow = {
   id?: string;
@@ -137,7 +138,7 @@ export default function VentaForm({
       }
 
       const payload: any = {
-        fecha: new Date().toISOString(),
+        fecha: nowInHondurasAsUTC(),
         cliente: String(values.cliente), // guardar id del cliente
         proyecto: String(values.proyecto), // guardar id del proyecto
         tipo_de_venta: tipo,

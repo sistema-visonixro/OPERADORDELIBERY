@@ -49,6 +49,8 @@ import {
   formatDate,
   getInitials,
   getDaysUntilDue,
+  hondurasToUTC,
+  utcToHondurasDate,
 } from "@/lib/utils";
 import type { Subscription, DashboardStats } from "@shared/schema";
 
@@ -342,11 +344,20 @@ export default function Subscriptions() {
     setSelected(s);
     // inicializar valores de edición
     setMensualidadEdit(String(s.monthlyAmount ?? ""));
-    setProximaEdit(
-      s.nextPaymentDate
-        ? new Date(s.nextPaymentDate).toISOString().slice(0, 10)
-        : ""
-    );
+    // Convertir la fecha UTC a fecha local para el input type="date"
+    if (s.nextPaymentDate) {
+      const hondurasDate = utcToHondurasDate(s.nextPaymentDate);
+      if (hondurasDate) {
+        const year = hondurasDate.getFullYear();
+        const month = String(hondurasDate.getMonth() + 1).padStart(2, '0');
+        const day = String(hondurasDate.getDate()).padStart(2, '0');
+        setProximaEdit(`${year}-${month}-${day}`);
+      } else {
+        setProximaEdit("");
+      }
+    } else {
+      setProximaEdit("");
+    }
     setEditMode(false);
     setDetailOpen(true);
   };
@@ -385,9 +396,16 @@ export default function Subscriptions() {
     if (!selected) return;
     
     // Verificar si se está cambiando la próxima fecha de pago
-    const originalProxima = selected.nextPaymentDate
-      ? new Date(selected.nextPaymentDate).toISOString().slice(0, 10)
-      : "";
+    let originalProxima = "";
+    if (selected.nextPaymentDate) {
+      const hondurasDate = utcToHondurasDate(selected.nextPaymentDate);
+      if (hondurasDate) {
+        const year = hondurasDate.getFullYear();
+        const month = String(hondurasDate.getMonth() + 1).padStart(2, '0');
+        const day = String(hondurasDate.getDate()).padStart(2, '0');
+        originalProxima = `${year}-${month}-${day}`;
+      }
+    }
     const cambioFecha = proximaEdit !== originalProxima;
     
     // Si se cambia la fecha, pedir confirmación de clave
@@ -405,7 +423,7 @@ export default function Subscriptions() {
     try {
       const mensual = mensualidadEdit ? Number(mensualidadEdit) : 0;
       const proxIso = proximaEdit
-        ? new Date(proximaEdit + "T00:00:00").toISOString()
+        ? hondurasToUTC(proximaEdit)
         : null;
       const updates: any = { mensualidad: mensual };
       if (proxIso) updates.proxima_fecha_de_pago = proxIso;
@@ -415,14 +433,30 @@ export default function Subscriptions() {
         .update(updates)
         .eq("id", selected.id);
       if (error) throw error;
-      // refrescar
-      queryClient.invalidateQueries({ queryKey: ["suscripciones"] });
-      // actualizar seleccionado localmente
-      setSelected({
+      
+      // actualizar seleccionado localmente con los nuevos valores
+      const updatedSelected = {
         ...selected,
         monthlyAmount: mensual,
         nextPaymentDate: proxIso,
-      });
+      };
+      setSelected(updatedSelected);
+      
+      // Actualizar también los campos de edición con los valores guardados
+      setMensualidadEdit(String(mensual));
+      if (proxIso) {
+        const hondurasDate = utcToHondurasDate(proxIso);
+        if (hondurasDate) {
+          const year = hondurasDate.getFullYear();
+          const month = String(hondurasDate.getMonth() + 1).padStart(2, '0');
+          const day = String(hondurasDate.getDate()).padStart(2, '0');
+          setProximaEdit(`${year}-${month}-${day}`);
+        }
+      }
+      
+      // refrescar queries
+      queryClient.invalidateQueries({ queryKey: ["suscripciones"] });
+      
       toast({ title: "Suscripción actualizada" });
       setEditMode(false);
       setShowPasswordConfirm(false);
@@ -438,20 +472,61 @@ export default function Subscriptions() {
   };
   
   const confirmPasswordAndSave = async () => {
-    // Validar la contraseña (ajusta según tu lógica)
-    const ADMIN_PASSWORD = "admin123"; // Cambiar por tu contraseña real o validar contra DB
-    
-    if (passwordInput !== ADMIN_PASSWORD) {
+    // Validar la contraseña desde la configuración
+    try {
+      const { data: configData, error: configError } = await supabase
+        .from("configuracion")
+        .select("clave")
+        .limit(1)
+        .single();
+      
+      if (configError) {
+        console.error("Error obteniendo configuración:", configError);
+        toast({
+          title: "Error al verificar contraseña",
+          description: `No se pudo obtener la configuración: ${configError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Configuración obtenida:", configData);
+      console.log("Clave en configuración:", configData?.clave);
+      console.log("Contraseña ingresada:", passwordInput);
+      
+      const adminPassword = configData?.clave;
+      
+      // Si no hay contraseña configurada, usar admin123 por defecto
+      if (!adminPassword) {
+        toast({
+          title: "Contraseña no configurada",
+          description: "Por favor configura una contraseña en Configuración primero",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (passwordInput !== adminPassword) {
+        console.log("Contraseñas no coinciden");
+        toast({
+          title: "Contraseña incorrecta",
+          description: "La contraseña ingresada no es válida",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Contraseña correcta, guardando...");
+      // Si la contraseña es correcta, guardar
+      await performSave();
+    } catch (err: any) {
+      console.error("Error en validación de contraseña:", err);
       toast({
-        title: "Contraseña incorrecta",
-        description: "La contraseña ingresada no es válida",
+        title: "Error",
+        description: err?.message || "Error al validar contraseña",
         variant: "destructive",
       });
-      return;
     }
-    
-    // Si la contraseña es correcta, guardar
-    await performSave();
   };
 
   return (

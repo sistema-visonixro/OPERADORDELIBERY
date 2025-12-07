@@ -18,7 +18,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, nowInHondurasAsUTC, hondurasToUTC } from "@/lib/utils";
 import Factura from "@/components/factura";
 
 type Props = {
@@ -514,7 +514,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
         }
 
         const payload = {
-          fecha_de_creacion: new Date().toISOString(),
+          fecha_de_creacion: nowInHondurasAsUTC(),
           tipo: "suscripcion",
           referencia_id: selectedSub.id,
           cliente: clienteId || selectedSub.cliente,
@@ -617,7 +617,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
           return;
         }
         const payload: any = {
-          fecha_de_creacion: new Date().toISOString(),
+          fecha_de_creacion: nowInHondurasAsUTC(),
           tipo: "contrato",
           referencia_id: selectedContrato.id,
           cliente: clienteId || selectedContrato.cliente,
@@ -671,7 +671,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
         // If user provided a next payment date, update the contrato.proximo_pago
         try {
           if (nextPaymentDate) {
-            const isoNext = new Date(nextPaymentDate).toISOString();
+            const isoNext = hondurasToUTC(nextPaymentDate);
             const { error: upNextErr } = await supabase
               .from("contratos")
               .update({ proximo_pago: isoNext })

@@ -33,6 +33,7 @@ import {
   getInitials,
   getPaymentTypeLabel,
   getDaysUntilDue,
+  utcToHondurasDate,
 } from "@/lib/utils";
 import type {
   DashboardStats,
@@ -279,13 +280,19 @@ export default function Dashboard() {
           0
         );
 
+        // Comparar fechas en horario hondureño
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const hondurasToday = utcToHondurasDate(today);
+        if (hondurasToday) {
+          hondurasToday.setHours(0, 0, 0, 0);
+        }
+        
         const pendingPayments = subsData.filter((s: any) => {
           if (!s.proxima_fecha_de_pago) return false;
-          const d = new Date(s.proxima_fecha_de_pago);
-          d.setHours(0, 0, 0, 0);
-          return d <= today;
+          const hondurasDue = utcToHondurasDate(s.proxima_fecha_de_pago);
+          if (!hondurasDue || !hondurasToday) return false;
+          hondurasDue.setHours(0, 0, 0, 0);
+          return hondurasDue <= hondurasToday;
         }).length;
 
         const overduePayments = pendingPayments;
@@ -376,8 +383,12 @@ export default function Dashboard() {
     queryFn: async () => {
       // upcoming: suscripciones with next payment in next 30 days or overdue
       const now = new Date();
-      const soon = new Date();
-      soon.setDate(now.getDate() + 30);
+      const hondurasNow = utcToHondurasDate(now);
+      const hondurasSoon = hondurasNow ? new Date(hondurasNow) : new Date();
+      if (hondurasSoon) {
+        hondurasSoon.setDate(hondurasSoon.getDate() + 30);
+      }
+      
       // Fetch upcoming suscripciones
       const { data: subsData, error: subsErr } = await supabase
         .from("suscripciones")
@@ -493,24 +504,32 @@ export default function Dashboard() {
   const { data: monthlyRevenue } = useQuery<any[]>({
     queryKey: ["dashboard", "revenue"],
     queryFn: async () => {
-      // fetch pagos, contratos y suscripciones for last 6 months
+      // fetch pagos, contratos y suscripciones for last 6 months en horario hondureño
       const now = new Date();
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const hondurasNow = utcToHondurasDate(now);
+      
+      // Calcular hace 6 meses en horario hondureño
+      const sixMonthsAgo = hondurasNow 
+        ? new Date(hondurasNow.getFullYear(), hondurasNow.getMonth() - 5, 1)
+        : new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      
+      // Convertir a UTC para la consulta (sumar 6 horas)
+      const sixMonthsAgoUTC = new Date(sixMonthsAgo.getTime() + (6 * 60 * 60 * 1000));
       
       const [pagosRes, contratosRes, suscripcionesRes] = await Promise.all([
         supabase
           .from("pagos")
           .select("id,fecha_de_creacion,monto,tipo")
-          .gte("fecha_de_creacion", sixMonthsAgo.toISOString())
+          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString())
           .order("fecha_de_creacion", { ascending: true }),
         supabase
           .from("contratos")
           .select("*")
-          .gte("fecha_de_creacion", sixMonthsAgo.toISOString()),
+          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
         supabase
           .from("suscripciones")
           .select("*")
-          .gte("fecha_de_creacion", sixMonthsAgo.toISOString()),
+          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
       ]);
 
       if (pagosRes.error) throw pagosRes.error;
@@ -518,7 +537,7 @@ export default function Dashboard() {
       const contratos = Array.isArray(contratosRes.data) ? contratosRes.data : [];
       const suscripciones = Array.isArray(suscripcionesRes.data) ? suscripcionesRes.data : [];
 
-      // build months array
+      // build months array usando horario hondureño
       const months: Record<
         string,
         {
@@ -528,8 +547,9 @@ export default function Dashboard() {
           revenue: number;
         }
       > = {};
+      const baseDate = hondurasNow || now;
       for (let i = 0; i < 6; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+        const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - (5 - i), 1);
         const key = `${d.getFullYear()}-${(d.getMonth() + 1)
           .toString()
           .padStart(2, "0")}`;
@@ -541,10 +561,11 @@ export default function Dashboard() {
         };
       }
 
-      // Agregar pagos regulares
+      // Agregar pagos regulares (convertir fecha a horario hondureño)
       pagos.forEach((r: any) => {
-        const d = new Date(r.fecha_de_creacion);
-        const key = `${d.getFullYear()}-${(d.getMonth() + 1)
+        const hondurasDate = utcToHondurasDate(r.fecha_de_creacion);
+        if (!hondurasDate) return;
+        const key = `${hondurasDate.getFullYear()}-${(hondurasDate.getMonth() + 1)
           .toString()
           .padStart(2, "0")}`;
         if (!months[key]) return;
@@ -558,8 +579,9 @@ export default function Dashboard() {
       // Agregar pagos iniciales de contratos
       contratos.forEach((c: any) => {
         if (!c.pago_inicial) return;
-        const d = new Date(c.fecha_de_creacion);
-        const key = `${d.getFullYear()}-${(d.getMonth() + 1)
+        const hondurasDate = utcToHondurasDate(c.fecha_de_creacion);
+        if (!hondurasDate) return;
+        const key = `${hondurasDate.getFullYear()}-${(hondurasDate.getMonth() + 1)
           .toString()
           .padStart(2, "0")}`;
         if (!months[key]) return;
