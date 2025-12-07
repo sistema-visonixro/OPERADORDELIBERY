@@ -56,17 +56,18 @@ export default function AvanceDetallePage() {
     queryFn: async () => {
       const { data: avanceData, error: avanceError } = await supabase
         .from("avances")
-        .select(
-          `
-          *,
-          clientes!avances_cliente_id_fkey(nombre),
-          contratos!avances_contrato_id_fkey(nombre_proyecto)
-        `
-        )
+        .select("*")
         .eq("id", id!)
         .single();
 
       if (avanceError) throw avanceError;
+
+      // Obtener cliente
+      const { data: clienteData } = await supabase
+        .from("clientes")
+        .select("nombre")
+        .eq("id", avanceData.cliente_id)
+        .single();
 
       const { data: caracteristicasData, error: caracteristicasError } =
         await supabase
@@ -79,9 +80,8 @@ export default function AvanceDetallePage() {
 
       return {
         ...avanceData,
-        cliente_nombre: avanceData.clientes?.nombre || "Sin cliente",
-        contrato_nombre:
-          avanceData.contratos?.nombre_proyecto || "Sin proyecto",
+        cliente_nombre: clienteData?.nombre || "Sin cliente",
+        contrato_nombre: avanceData.nombre_proyecto || "Sin proyecto",
         caracteristicas: caracteristicasData || [],
       } as AvanceWithDetails;
     },

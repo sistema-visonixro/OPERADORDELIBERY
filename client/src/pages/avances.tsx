@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -43,7 +43,8 @@ interface Cliente {
 
 interface Contrato {
   id: string;
-  nombre_proyecto: string;
+  proyecto: string;
+  proyecto_nombre?: string;
 }
 
 interface AvanceExtended extends Avance {
@@ -67,27 +68,45 @@ export default function AvancesPage() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
+  // Resetear contrato cuando cambia el cliente
+  useEffect(() => {
+    setSelectedContrato("");
+  }, [selectedCliente]);
+
   // Obtener todos los avances
   const { data: avances, isLoading } = useQuery({
     queryKey: ["avances"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("avances")
-        .select(
-          `
-          *,
-          clientes!avances_cliente_id_fkey(nombre),
-          contratos!avances_contrato_id_fkey(nombre_proyecto)
-        `
-        )
+        .select("*")
         .order("fecha_creacion", { ascending: false });
 
       if (error) throw error;
+      if (!data || data.length === 0) return [];
 
-      return (data || []).map((avance: any) => ({
+      // Obtener IDs únicos de clientes y contratos
+      const clienteIds = [...new Set(data.map((a: any) => a.cliente_id))];
+      const contratoIds = [...new Set(data.map((a: any) => a.contrato_id))];
+
+      // Obtener clientes
+      const { data: clientesData } = await supabase
+        .from("clientes")
+        .select("id, nombre")
+        .in("id", clienteIds);
+
+      // Crear mapa de clientes
+      const clientesMap: Record<string, string> = {};
+      (clientesData || []).forEach((c: any) => {
+        clientesMap[c.id] = c.nombre;
+      });
+
+      // Por ahora, usar el nombre_proyecto de avances directamente
+      // ya que está guardado en la tabla
+      return data.map((avance: any) => ({
         ...avance,
-        cliente_nombre: avance.clientes?.nombre || "Sin cliente",
-        contrato_nombre: avance.contratos?.nombre_proyecto || "Sin proyecto",
+        cliente_nombre: clientesMap[avance.cliente_id] || "Sin cliente",
+        contrato_nombre: avance.nombre_proyecto || "Sin proyecto",
       })) as AvanceExtended[];
     },
   });
@@ -112,14 +131,37 @@ export default function AvancesPage() {
     queryFn: async () => {
       if (!selectedCliente) return [];
 
-      const { data, error } = await supabase
+      // Obtener contratos del cliente
+      const { data: contratosData, error: contratosError } = await supabase
         .from("contratos")
-        .select("id, nombre_proyecto")
-        .eq("cliente_id", selectedCliente)
-        .order("nombre_proyecto");
+        .select("id, proyecto")
+        .eq("cliente", selectedCliente)
+        .eq("estado", "activo");
 
-      if (error) throw error;
-      return data as Contrato[];
+      if (contratosError) throw contratosError;
+      if (!contratosData || contratosData.length === 0) return [];
+
+      // Obtener nombres de proyectos
+      const proyectoIds = contratosData.map((c: any) => c.proyecto);
+      const { data: proyectosData, error: proyectosError } = await supabase
+        .from("proyectos")
+        .select("id, nombre")
+        .in("id", proyectoIds);
+
+      if (proyectosError) throw proyectosError;
+
+      // Mapear nombres de proyectos
+      const proyectosMap: Record<string, string> = {};
+      (proyectosData || []).forEach((p: any) => {
+        proyectosMap[p.id] = p.nombre;
+      });
+
+      // Combinar datos
+      return contratosData.map((c: any) => ({
+        id: c.id,
+        proyecto: c.proyecto,
+        proyecto_nombre: proyectosMap[c.proyecto] || "Sin nombre",
+      })) as Contrato[];
     },
     enabled: !!selectedCliente,
   });
@@ -524,16 +566,33 @@ export default function AvancesPage() {
                   disabled={!selectedCliente}
                 >
                   <SelectTrigger id="contrato">
-                    <SelectValue placeholder="Selecciona un proyecto" />
+                    <SelectValue placeholder={
+                      !selectedCliente 
+                        ? "Primero selecciona un cliente" 
+                        : contratos && contratos.length === 0
+                        ? "No hay contratos disponibles"
+                        : "Selecciona un proyecto"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {contratos?.map((contrato) => (
-                      <SelectItem key={contrato.id} value={contrato.id}>
-                        {contrato.nombre_proyecto}
-                      </SelectItem>
-                    ))}
+                    {contratos && contratos.length > 0 ? (
+                      contratos.map((contrato) => (
+                        <SelectItem key={contrato.id} value={contrato.id}>
+                          {contrato.proyecto_nombre || "Sin nombre"}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground text-center">
+                        No hay contratos para este cliente
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
+                {selectedCliente && contratos && contratos.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Este cliente no tiene contratos activos. Crea uno primero en la sección de Contratos.
+                  </p>
+                )}
               </div>
             </div>
 

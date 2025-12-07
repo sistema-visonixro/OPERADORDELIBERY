@@ -111,31 +111,26 @@ CREATE TABLE IF NOT EXISTS public.avances (
                                                                                                                                                               FOR EACH ROW
                                                                                                                                                                 EXECUTE FUNCTION actualizar_porcentaje_avance();
 
-                                                                                                                                                                -- Habilitar Row Level Security (RLS)
-                                                                                                                                                                ALTER TABLE public.avances ENABLE ROW LEVEL SECURITY;
-                                                                                                                                                                ALTER TABLE public.avances_caracteristicas ENABLE ROW LEVEL SECURITY;
+-- Habilitar Row Level Security (RLS)
+ALTER TABLE public.avances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.avances_caracteristicas ENABLE ROW LEVEL SECURITY;
 
-                                                                                                                                                                -- Políticas de seguridad para avances (permitir todo para usuarios autenticados)
-                                                                                                                                                                DROP POLICY IF EXISTS "Permitir todo acceso a avances" ON public.avances;
-                                                                                                                                                                CREATE POLICY "Permitir todo acceso a avances"
-                                                                                                                                                                  ON public.avances
-                                                                                                                                                                    FOR ALL
-                                                                                                                                                                      TO authenticated
-                                                                                                                                                                        USING (true)
-                                                                                                                                                                          WITH CHECK (true);
+-- Políticas de seguridad para avances (permitir todo acceso público)
+DROP POLICY IF EXISTS "Permitir todo acceso a avances" ON public.avances;
+CREATE POLICY "Permitir todo acceso a avances"
+  ON public.avances
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
 
-                                                                                                                                                                          -- Políticas de seguridad para avances_caracteristicas
-                                                                                                                                                                          DROP POLICY IF EXISTS "Permitir todo acceso a caracteristicas" ON public.avances_caracteristicas;
-                                                                                                                                                                          CREATE POLICY "Permitir todo acceso a caracteristicas"
-                                                                                                                                                                            ON public.avances_caracteristicas
-                                                                                                                                                                              FOR ALL
-                                                                                                                                                                                TO authenticated
-                                                                                                                                                                                  USING (true)
-                                                                                                                                                                                    WITH CHECK (true);
-
-                                                                                                                                                                                    -- Comentarios para documentación
+-- Políticas de seguridad para avances_caracteristicas (permitir todo acceso público)
+DROP POLICY IF EXISTS "Permitir todo acceso a caracteristicas" ON public.avances_caracteristicas;
+CREATE POLICY "Permitir todo acceso a caracteristicas"
+  ON public.avances_caracteristicas
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);                                                                                                                                                                                    -- Comentarios para documentación
                                                                                                                                                                                     COMMENT ON TABLE public.avances IS 'Proyectos en desarrollo con seguimiento de avance';
                                                                                                                                                                                     COMMENT ON TABLE public.avances_caracteristicas IS 'Características o tareas de cada proyecto';
                                                                                                                                                                                     COMMENT ON COLUMN public.avances.porcentaje_avance IS 'Porcentaje calculado automáticamente basado en características completadas';
                                                                                                                                                                                     COMMENT ON COLUMN public.avances.estado IS 'Estado del proyecto: en_progreso, completado, pausado, cancelado';
-                                                                                                                                                                                    
