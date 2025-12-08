@@ -4,17 +4,21 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Register service worker to enable PWA install and offline support
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-	window.addEventListener('load', () => {
-		const swUrl = '/sw.js';
-		navigator.serviceWorker
-			.register(swUrl, { scope: '/' })
-			.then((reg) => {
-				console.log('Service worker registered:', reg.scope);
-			})
-			.catch((err) => {
-				console.warn('Service worker registration failed:', err);
-			});
-	});
+// Register service worker only in production to avoid caching during dev
+if (
+  import.meta.env.PROD &&
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator
+) {
+  window.addEventListener("load", () => {
+    const swUrl = "/sw.js";
+    navigator.serviceWorker
+      .register(swUrl, { scope: "/" })
+      .then((reg) => {
+        console.log("Service worker registered:", reg.scope);
+      })
+      .catch((err) => {
+        console.warn("Service worker registration failed:", err);
+      });
+  });
 }

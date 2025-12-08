@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   FileText,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,8 +34,13 @@ const navigationItems = [
   { title: "Contratos Activos", url: "/contratos-activos", icon: FileText },
   { title: "Suscripciones", url: "/suscripciones", icon: RefreshCcw },
   { title: "Pagos", url: "/pagos", icon: CreditCard },
-  { title: "Estado de cuentas", url: "/pagos/estado-de-cuentas", icon: FileText },
+  {
+    title: "Estado de cuentas",
+    url: "/pagos/estado-de-cuentas",
+    icon: FileText,
+  },
   { title: "Avances", url: "/avances", icon: TrendingUp },
+  { title: "Egresos", url: "/egresos", icon: TrendingDown },
   { title: "Estadisticas", url: "/estadisticas", icon: BarChart3 },
 ];
 
@@ -54,7 +60,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-        <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-4">
         <Link
           href="/"
           className="flex items-center gap-3"

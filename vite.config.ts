@@ -34,13 +34,17 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,
-    host: true,
+    // bind to localhost for local development
+    host: "localhost",
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
+    // HMR configured for non-HTTPS localhost development
     hmr: {
-      clientPort: 443,
+      protocol: "ws",
+      host: "localhost",
+      port: 5174,
     },
   },
 });

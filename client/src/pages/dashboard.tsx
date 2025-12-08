@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Clock,
+  Scale,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,14 +75,15 @@ function StatsCard({
 
   return (
     <Card className="hover-elevate transition-all">
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-muted-foreground truncate">
               {title}
             </p>
             <p
-              className="text-2xl font-bold mt-1 truncate"
+              title={value}
+              className="text-lg md:text-2xl lg:text-3xl font-bold mt-1 truncate"
               data-testid={`text-stat-${title
                 .toLowerCase()
                 .replace(/\s+/g, "-")}`}
@@ -228,48 +230,60 @@ const CHART_COLORS = [
 export default function Dashboard() {
   const { toast } = useToast();
 
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: statsLoading } = useQuery<
+    DashboardStats & { totalEgresos: number; balance: number }
+  >({
     queryKey: ["dashboard", "stats"],
     queryFn: async () => {
       try {
-        const [rPagos, rClientes, rSubs, rContratos] = await Promise.all([
-          supabase.from("pagos").select("monto"),
-          supabase.from("clientes").select("*"),
-          supabase
-            .from("suscripciones")
-            .select("*"),
-          supabase
-            .from("contratos")
-            .select("*"),
-        ]);
+        const [rPagos, rClientes, rSubs, rContratos, rEgresos] =
+          await Promise.all([
+            supabase.from("pagos").select("monto"),
+            supabase.from("clientes").select("*"),
+            supabase.from("suscripciones").select("*"),
+            supabase.from("contratos").select("*"),
+            supabase.from("egresos").select("monto"),
+          ]);
 
         const pagosData = Array.isArray(rPagos.data) ? rPagos.data : [];
         const clientesData = Array.isArray(rClientes.data)
           ? rClientes.data
           : [];
         const subsData = Array.isArray(rSubs.data) ? rSubs.data : [];
-        const contratosData = Array.isArray(rContratos.data) ? rContratos.data : [];
+        const contratosData = Array.isArray(rContratos.data)
+          ? rContratos.data
+          : [];
+        const egresosData = Array.isArray(rEgresos.data) ? rEgresos.data : [];
 
         // Sumar todos los pagos realizados
         const totalPagos = pagosData.reduce(
           (s: number, p: any) => s + Number(p.monto ?? 0),
           0
         );
-        
+
         // Sumar pagos iniciales de contratos
         const totalPagosInicialesContratos = contratosData.reduce(
           (s: number, c: any) => s + Number(c.pago_inicial ?? 0),
           0
         );
-        
+
         // Total de ingresos = pagos + pagos iniciales de contratos
         const totalRevenue = totalPagos + totalPagosInicialesContratos;
-        
+
+        // Sumar todos los egresos
+        const totalEgresos = egresosData.reduce(
+          (s: number, e: any) => s + Number(e.monto ?? 0),
+          0
+        );
+
+        // Balance = ingresos - egresos
+        const balance = totalRevenue - totalEgresos;
+
         const totalClients = clientesData.length;
         const activeSubs = subsData.filter((s: any) =>
           s.is_active === undefined ? true : Boolean(s.is_active)
         );
-        
+
         const activeSubscriptions = activeSubs.length;
 
         const monthlyRecurringRevenue = activeSubs.reduce(
@@ -286,7 +300,7 @@ export default function Dashboard() {
         if (hondurasToday) {
           hondurasToday.setHours(0, 0, 0, 0);
         }
-        
+
         const pendingPayments = subsData.filter((s: any) => {
           if (!s.proxima_fecha_de_pago) return false;
           const hondurasDue = utcToHondurasDate(s.proxima_fecha_de_pago);
@@ -304,7 +318,9 @@ export default function Dashboard() {
           activeSubscriptions,
           monthlyRecurringRevenue,
           overduePayments,
-        } as DashboardStats;
+          totalEgresos,
+          balance,
+        } as DashboardStats & { totalEgresos: number; balance: number };
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error("Error loading dashboard stats:", err);
@@ -316,7 +332,9 @@ export default function Dashboard() {
           activeSubscriptions: 0,
           monthlyRecurringRevenue: 0,
           overduePayments: 0,
-        } as DashboardStats;
+          totalEgresos: 0,
+          balance: 0,
+        } as DashboardStats & { totalEgresos: number; balance: number };
       }
     },
   });
@@ -388,7 +406,7 @@ export default function Dashboard() {
       if (hondurasSoon) {
         hondurasSoon.setDate(hondurasSoon.getDate() + 30);
       }
-      
+
       // Fetch upcoming suscripciones
       const { data: subsData, error: subsErr } = await supabase
         .from("suscripciones")
@@ -504,38 +522,51 @@ export default function Dashboard() {
   const { data: monthlyRevenue } = useQuery<any[]>({
     queryKey: ["dashboard", "revenue"],
     queryFn: async () => {
-      // fetch pagos, contratos y suscripciones for last 6 months en horario hondureño
+      // fetch pagos, contratos, suscripciones y egresos for last 6 months en horario hondureño
       const now = new Date();
       const hondurasNow = utcToHondurasDate(now);
-      
+
       // Calcular hace 6 meses en horario hondureño
-      const sixMonthsAgo = hondurasNow 
+      const sixMonthsAgo = hondurasNow
         ? new Date(hondurasNow.getFullYear(), hondurasNow.getMonth() - 5, 1)
         : new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      
+
       // Convertir a UTC para la consulta (sumar 6 horas)
-      const sixMonthsAgoUTC = new Date(sixMonthsAgo.getTime() + (6 * 60 * 60 * 1000));
-      
-      const [pagosRes, contratosRes, suscripcionesRes] = await Promise.all([
-        supabase
-          .from("pagos")
-          .select("id,fecha_de_creacion,monto,tipo")
-          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString())
-          .order("fecha_de_creacion", { ascending: true }),
-        supabase
-          .from("contratos")
-          .select("*")
-          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
-        supabase
-          .from("suscripciones")
-          .select("*")
-          .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
-      ]);
+      const sixMonthsAgoUTC = new Date(
+        sixMonthsAgo.getTime() + 6 * 60 * 60 * 1000
+      );
+
+      const [pagosRes, contratosRes, suscripcionesRes, egresosRes] =
+        await Promise.all([
+          supabase
+            .from("pagos")
+            .select("id,fecha_de_creacion,monto,tipo")
+            .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString())
+            .order("fecha_de_creacion", { ascending: true }),
+          supabase
+            .from("contratos")
+            .select("*")
+            .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
+          supabase
+            .from("suscripciones")
+            .select("*")
+            .gte("fecha_de_creacion", sixMonthsAgoUTC.toISOString()),
+          supabase
+            .from("egresos")
+            .select("id,fecha,monto")
+            .gte("fecha", sixMonthsAgoUTC.toISOString())
+            .order("fecha", { ascending: true }),
+        ]);
 
       if (pagosRes.error) throw pagosRes.error;
       const pagos = Array.isArray(pagosRes.data) ? pagosRes.data : [];
-      const contratos = Array.isArray(contratosRes.data) ? contratosRes.data : [];
-      const suscripciones = Array.isArray(suscripcionesRes.data) ? suscripcionesRes.data : [];
+      const contratos = Array.isArray(contratosRes.data)
+        ? contratosRes.data
+        : [];
+      const suscripciones = Array.isArray(suscripcionesRes.data)
+        ? suscripcionesRes.data
+        : [];
+      const egresos = Array.isArray(egresosRes.data) ? egresosRes.data : [];
 
       // build months array usando horario hondureño
       const months: Record<
@@ -545,11 +576,16 @@ export default function Dashboard() {
           oneTime: number;
           subscriptions: number;
           revenue: number;
+          egresos: number;
         }
       > = {};
       const baseDate = hondurasNow || now;
       for (let i = 0; i < 6; i++) {
-        const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - (5 - i), 1);
+        const d = new Date(
+          baseDate.getFullYear(),
+          baseDate.getMonth() - (5 - i),
+          1
+        );
         const key = `${d.getFullYear()}-${(d.getMonth() + 1)
           .toString()
           .padStart(2, "0")}`;
@@ -558,6 +594,7 @@ export default function Dashboard() {
           oneTime: 0,
           subscriptions: 0,
           revenue: 0,
+          egresos: 0,
         };
       }
 
@@ -565,7 +602,9 @@ export default function Dashboard() {
       pagos.forEach((r: any) => {
         const hondurasDate = utcToHondurasDate(r.fecha_de_creacion);
         if (!hondurasDate) return;
-        const key = `${hondurasDate.getFullYear()}-${(hondurasDate.getMonth() + 1)
+        const key = `${hondurasDate.getFullYear()}-${(
+          hondurasDate.getMonth() + 1
+        )
           .toString()
           .padStart(2, "0")}`;
         if (!months[key]) return;
@@ -581,13 +620,29 @@ export default function Dashboard() {
         if (!c.pago_inicial) return;
         const hondurasDate = utcToHondurasDate(c.fecha_de_creacion);
         if (!hondurasDate) return;
-        const key = `${hondurasDate.getFullYear()}-${(hondurasDate.getMonth() + 1)
+        const key = `${hondurasDate.getFullYear()}-${(
+          hondurasDate.getMonth() + 1
+        )
           .toString()
           .padStart(2, "0")}`;
         if (!months[key]) return;
         const monto = Number(c.pago_inicial ?? 0);
         months[key].revenue += monto;
         months[key].oneTime += monto;
+      });
+
+      // Agregar egresos
+      egresos.forEach((e: any) => {
+        const hondurasDate = utcToHondurasDate(e.fecha);
+        if (!hondurasDate) return;
+        const key = `${hondurasDate.getFullYear()}-${(
+          hondurasDate.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}`;
+        if (!months[key]) return;
+        const monto = Number(e.monto ?? 0);
+        months[key].egresos += monto;
       });
 
       return Object.values(months);
@@ -632,7 +687,8 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Estadísticas principales: divididas en dos filas para mejor responsividad */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4">
         <StatsCard
           title="Ingresos Totales"
           value={formatCurrency(stats?.totalRevenue || 0)}
@@ -641,6 +697,23 @@ export default function Dashboard() {
           trendValue="+12.5%"
           loading={statsLoading}
         />
+        <StatsCard
+          title="Egresos"
+          value={formatCurrency(stats?.totalEgresos || 0)}
+          icon={TrendingDown}
+          loading={statsLoading}
+        />
+        <StatsCard
+          title="Balance"
+          value={formatCurrency(stats?.balance || 0)}
+          icon={Scale}
+          trend={(stats?.balance || 0) >= 0 ? "up" : "down"}
+          trendValue={(stats?.balance || 0) >= 0 ? "Positivo" : "Negativo"}
+          loading={statsLoading}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         <StatsCard
           title="Clientes Activos"
           value={String(stats?.totalClients || 0)}
@@ -669,7 +742,7 @@ export default function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-lg font-semibold">
-              Ingresos Mensuales
+              Movimientos Mensuales
             </CardTitle>
             <Badge variant="secondary" className="text-xs">
               Ultimos 6 meses
@@ -713,6 +786,12 @@ export default function Dashboard() {
                     fill="hsl(var(--chart-2))"
                     radius={[4, 4, 0, 0]}
                     name="Suscripciones"
+                  />
+                  <Bar
+                    dataKey="egresos"
+                    fill="hsl(var(--destructive))"
+                    radius={[4, 4, 0, 0]}
+                    name="Egresos"
                   />
                 </BarChart>
               </ResponsiveContainer>

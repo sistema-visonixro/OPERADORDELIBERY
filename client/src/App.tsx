@@ -21,6 +21,8 @@ import ContratosActivos from "@/pages/contratos-activos";
 import Configuracion from "@/pages/configuracion";
 import Avances from "@/pages/avances";
 import AvanceDetalle from "@/pages/avance-detalle";
+import Egresos from "@/pages/egresos";
+import EgresoDetalle from "@/pages/egreso-detalle";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import React, { useEffect, useState } from "react";
@@ -42,6 +44,8 @@ function Router() {
       <Route path="/estadisticas" component={Statistics} />
       <Route path="/avances/:id" component={AvanceDetalle} />
       <Route path="/avances" component={Avances} />
+      <Route path="/egresos/:id" component={EgresoDetalle} />
+      <Route path="/egresos" component={Egresos} />
       <Route component={NotFound} />
     </Switch>
   );
