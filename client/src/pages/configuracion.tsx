@@ -10,7 +10,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Edit, Clock, MapPin, Phone, Key } from "lucide-react";
+import { Edit, Clock, MapPin, Phone, Key, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +24,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { formatDate } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 export default function Configuracion() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: cfg, isLoading } = useQuery({
     queryKey: ["configuracion"],
@@ -115,6 +117,15 @@ export default function Configuracion() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLocation("/dispositivos")}
+              className="gap-2"
+            >
+              <Smartphone className="w-4 h-4" />
+              Dispositivos
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
               <Edit className="w-4 h-4" />
               Editar

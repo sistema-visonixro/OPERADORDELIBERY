@@ -25,7 +25,11 @@ import Egresos from "@/pages/egresos";
 import EgresoDetalle from "@/pages/egreso-detalle";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
+import AccesoDenegado from "@/pages/acceso-denegado";
+import Dispositivos from "@/pages/dispositivos";
 import React, { useEffect, useState } from "react";
+import { generateDeviceFingerprint } from "@/lib/deviceFingerprint";
+import { supabase } from "@/lib/supabase";
 
 function Router() {
   return (
@@ -46,6 +50,7 @@ function Router() {
       <Route path="/avances" component={Avances} />
       <Route path="/egresos/:id" component={EgresoDetalle} />
       <Route path="/egresos" component={Egresos} />
+      <Route path="/dispositivos" component={Dispositivos} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -54,6 +59,53 @@ function Router() {
 function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [deviceAuthorized, setDeviceAuthorized] = useState<boolean | null>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
+  const [checkingDevice, setCheckingDevice] = useState(true);
+
+  // Generar fingerprint y verificar autorización del dispositivo
+  useEffect(() => {
+    const checkDevice = async () => {
+      try {
+        const fingerprint = await generateDeviceFingerprint();
+        setDeviceFingerprint(fingerprint);
+
+        // Verificar si el dispositivo está autorizado
+        const { data, error } = await supabase
+          .from("dispositivos")
+          .select("*")
+          .eq("fingerprint", fingerprint)
+          .eq("autorizado", true)
+          .limit(1)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 es "not found", que es esperado para dispositivos no autorizados
+          console.error("Error verificando dispositivo:", error);
+        }
+
+        if (data) {
+          // Dispositivo autorizado, actualizar último acceso
+          await supabase
+            .from("dispositivos")
+            .update({ ultimo_acceso: new Date().toISOString() })
+            .eq("id", data.id);
+          
+          setDeviceAuthorized(true);
+        } else {
+          // Dispositivo no autorizado
+          setDeviceAuthorized(false);
+        }
+      } catch (err) {
+        console.error("Error generando fingerprint:", err);
+        setDeviceAuthorized(false);
+      } finally {
+        setCheckingDevice(false);
+      }
+    };
+
+    checkDevice();
+  }, []);
 
   useEffect(() => {
     try {
@@ -73,8 +125,38 @@ function App() {
     }, 500);
   };
 
-  if (authed === null) return null;
+  // Mostrar loading mientras se verifica el dispositivo
+  if (checkingDevice || authed === null || deviceAuthorized === null) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+          <p className="text-white text-lg">Verificando dispositivo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si el dispositivo no está autorizado, mostrar pantalla de acceso denegado
+  if (!deviceAuthorized) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="visonixro-theme">
+          <TooltipProvider>
+            <AccesoDenegado
+              deviceFingerprint={deviceFingerprint}
+              onAuthorized={() => setDeviceAuthorized(true)}
+            />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Si no está autenticado, mostrar login
   if (!authed) return <Login onSuccess={() => setAuthed(true)} isLoggingOut={isLoggingOut} />;
+  
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
