@@ -53,6 +53,7 @@ function Router() {
 
 function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     try {
@@ -63,8 +64,17 @@ function App() {
     }
   }, []);
 
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      localStorage.removeItem("admon-auth");
+      setAuthed(false);
+      setIsLoggingOut(false);
+    }, 500);
+  };
+
   if (authed === null) return null;
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} isLoggingOut={isLoggingOut} />;
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
@@ -75,8 +85,8 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="visonixro-theme">
         <TooltipProvider>
           <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
+            <div className={`flex h-screen w-full transition-opacity duration-500 ${isLoggingOut ? 'opacity-0' : 'opacity-100'}`}>
+              <AppSidebar onLogout={handleLogout} />
               <div className="flex flex-col flex-1 overflow-hidden">
                 <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />

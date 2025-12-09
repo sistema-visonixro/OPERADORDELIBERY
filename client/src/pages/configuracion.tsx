@@ -10,7 +10,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Edit, LogOut, Clock, MapPin, Phone, Key } from "lucide-react";
+import { Edit, Clock, MapPin, Phone, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -118,20 +118,6 @@ export default function Configuracion() {
             <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
               <Edit className="w-4 h-4" />
               Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => {
-                try {
-                  localStorage.removeItem("admon-auth");
-                } catch (e) {}
-                if (typeof window !== "undefined")
-                  window.location.href = "/login";
-              }}
-            >
-              <LogOut className="w-4 h-4" />
-              Cerrar sesión
             </Button>
           </div>
         </div>

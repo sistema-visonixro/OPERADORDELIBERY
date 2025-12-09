@@ -11,6 +11,7 @@ import {
   FileText,
   TrendingUp,
   TrendingDown,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,6 +26,18 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -44,9 +57,14 @@ const navigationItems = [
   { title: "Estadisticas", url: "/estadisticas", icon: BarChart3 },
 ];
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  onLogout?: () => void;
+};
+
+export function AppSidebar({ onLogout }: AppSidebarProps) {
   const [location] = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // quick client-side guard: don't render sidebar if user is not authenticated
   if (typeof window !== "undefined") {
@@ -133,8 +151,46 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <button
+                onClick={() => {
+                  setShowLogoutDialog(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 hover:scale-105 active:scale-95"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-5 w-5 text-red-500" />
+                <span className="font-medium text-red-500">Cerrar Sesión</span>
+              </button>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro que deseas cerrar sesión? Tendrás que volver a ingresar tu clave para acceder.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                onLogout?.();
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Cerrar Sesión
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   );
 }

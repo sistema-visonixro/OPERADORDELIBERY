@@ -1,0 +1,13 @@
+node_modules/
+dist/
+/.vite/
+node_modules/.vite/
+*.log
+/.turbo/
+/.cache/
+*.tsbuildinfo
+/.env
+/.env.*
+.DS_Store
+coverage/
+dist/public/assets/*.map
