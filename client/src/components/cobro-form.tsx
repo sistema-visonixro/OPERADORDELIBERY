@@ -128,7 +128,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
       setSelectedContrato(initialReferencia);
       const restante = await calcularRestanteContrato(initialReferencia);
       setContratoRestante(restante);
-      setAmount(String(restante));
+      setAmount("0");
       setStep(3);
     }
   }
@@ -762,7 +762,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Registrar Cobro</DialogTitle>
@@ -890,6 +890,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
                           try {
                             const restante = await calcularRestanteContrato(c);
                             setContratoRestante(restante);
+                            setAmount("0");
                           } catch (err) {
                             // eslint-disable-next-line no-console
                             console.error(
@@ -897,6 +898,7 @@ export default function CobroForm({ open, onOpenChange, onCreated, clienteId, in
                               err
                             );
                             setContratoRestante(null);
+                            setAmount("0");
                           }
                         }}
                       >
