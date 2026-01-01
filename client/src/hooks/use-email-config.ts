@@ -11,7 +11,7 @@
 export function useEmailConfig() {
   return {
     // URL del Google Apps Script desplegado como Web App
-    scriptUrl: "https://script.google.com/macros/s/AKfycbziFtOy7p5zr-hOB1ZbF0YtRDwtru4X1t9KLtaNYqkxsJ4JI_C5UKsVQwGhf7yRZdKIfA/exec",
+    scriptUrl: "https://script.google.com/macros/s/AKfycbxPtwmP-q98N8sVaeYDmRVMo2gLE56vIqQErwBjPnoUoAZ9jholfe0Al_P9VtLCXsZ04g/exec",
     
     // API Key para autenticación básica (debe coincidir con la del Google Script)
     apiKey: "tu-clave-secreta-muy-segura-12345",
@@ -39,23 +39,33 @@ export async function enviarRecordatorioEmail(datos: {
   const config = useEmailConfig();
   
   try {
-    const response = await fetch(config.scriptUrl, {
-      method: "POST",
-      mode: "no-cors", // Necesario para Google Apps Script
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        apiKey: config.apiKey,
-        ...datos,
-      }),
+    // Construir URL GET con parámetros mínimos esperados por el Google Script
+    const url = new URL(config.scriptUrl);
+    url.searchParams.set("email", String(datos.clienteEmail || ""));
+    url.searchParams.set("nombre", String(datos.clienteNombre || ""));
+    // agregar apiKey para validación básica en el script
+    if (config.apiKey) url.searchParams.set("apiKey", config.apiKey);
+
+    // Opcional: agregar metadatos para registro en script (no obligatorios)
+    if (typeof datos.proyectoNombre !== "undefined")
+      url.searchParams.set("proyectoNombre", String(datos.proyectoNombre));
+    if (typeof datos.mensualidad !== "undefined")
+      url.searchParams.set("mensualidad", String(datos.mensualidad));
+    if (typeof datos.diasAtraso !== "undefined")
+      url.searchParams.set("diasAtraso", String(datos.diasAtraso));
+    if (typeof datos.fechaVencimiento !== "undefined")
+      url.searchParams.set("fechaVencimiento", String(datos.fechaVencimiento));
+
+    // Usar GET con mode no-cors para evitar bloqueos CORS en Apps Script
+    await fetch(url.toString(), {
+      method: "GET",
+      mode: "no-cors",
     });
 
-    // Como usamos no-cors, no podemos leer la respuesta
-    // Asumimos que el envío fue exitoso
     return {
       success: true,
       message: "Recordatorio enviado exitosamente",
+      url: url.toString(),
     };
   } catch (error) {
     console.error("Error enviando recordatorio:", error);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useEmailConfig } from "@/hooks/use-email-config";
+import { useEmailConfig, enviarRecordatorioEmail } from "@/hooks/use-email-config";
 import {
   RefreshCcw,
   Search,
@@ -479,25 +479,14 @@ export default function Subscriptions() {
         }
       }
 
-      // Obtener configuración del hook (funciona en desarrollo y producción)
-      const emailConfig = useEmailConfig();
-
-      // Enviar al Google Apps Script
-      await fetch(emailConfig.scriptUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey: emailConfig.apiKey,
-          clienteEmail: suscripcion.clientEmail,
-          clienteNombre: suscripcion.clientName,
-          proyectoNombre: suscripcion.projectName,
-          mensualidad: suscripcion.monthlyAmount,
-          diasAtraso,
-          fechaVencimiento: formatDate(suscripcion.nextPaymentDate),
-        }),
+      // Enviar al Google Apps Script (GET con query params)
+      await enviarRecordatorioEmail({
+        clienteEmail: suscripcion.clientEmail,
+        clienteNombre: suscripcion.clientName,
+        proyectoNombre: suscripcion.projectName,
+        mensualidad: suscripcion.monthlyAmount,
+        diasAtraso,
+        fechaVencimiento: formatDate(suscripcion.nextPaymentDate),
       });
 
       // Como usamos no-cors, no podemos leer la respuesta, asumimos éxito
