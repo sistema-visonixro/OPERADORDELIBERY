@@ -40,21 +40,9 @@ import {
 import { useState } from "react";
 
 const navigationItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Proyecto", url: "/clientes/proyecto", icon: Code2 },
-  { title: "Venta", url: "/clientes/proyecto/ventas", icon: ShoppingCart },
-  { title: "Contratos Activos", url: "/contratos-activos", icon: FileText },
-  { title: "Suscripciones", url: "/suscripciones", icon: RefreshCcw },
-  { title: "Pagos", url: "/pagos", icon: CreditCard },
-  {
-    title: "Estado de cuentas",
-    url: "/pagos/estado-de-cuentas",
-    icon: FileText,
-  },
-  { title: "Avances", url: "/avances", icon: TrendingUp },
-  { title: "Egresos", url: "/egresos", icon: TrendingDown },
-  { title: "Estadisticas", url: "/estadisticas", icon: BarChart3 },
+  { title: "Pedidos", url: "/pedidos", icon: ShoppingCart },
+  { title: "Restaurantes", url: "/restaurantes", icon: FileText },
+  { title: "Repartidores", url: "/repartidores", icon: Users },
 ];
 
 type AppSidebarProps = {

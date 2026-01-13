@@ -13,6 +13,7 @@ type Props = {
 
 export default function Login({ onSuccess, isLoggingOut = false }: Props) {
   const { toast } = useToast();
+  const [codigo, setCodigo] = useState("");
   const [clave, setClave] = useState("");
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
@@ -28,19 +29,31 @@ export default function Login({ onSuccess, isLoggingOut = false }: Props) {
   async function onSubmit() {
     try {
       setLoading(true);
+      // Buscar usuario operador por código en la tabla `user_operador`
       const { data, error } = await supabase
-        .from("configuracion")
-        .select("clave")
+        .from("user_operador")
+        .select("codigo, clave, rol, nombre")
+        .eq("codigo", codigo)
         .limit(1)
         .single();
       if (error) throw error;
 
       const stored = data?.clave ?? null;
-      if (!stored) {
-        toast({ title: "No hay clave configurada" });
+      if (!data || !stored) {
+        toast({ title: "Código o clave inválidos" });
+        setLoading(false);
         return;
       }
 
+      // Verificar rol: sólo permitir acceso si el rol es 'operador'
+      const role = data.rol ?? "";
+      if (role !== "operador") {
+        toast({ title: "Acceso denegado: rol no autorizado" });
+        setLoading(false);
+        return;
+      }
+
+      // Comparación de clave (si almacenas hash, reemplaza esta comparación)
       if (clave === stored) {
         // Activar animación de éxito
         setIsSuccessAnimating(true);
@@ -48,6 +61,14 @@ export default function Login({ onSuccess, isLoggingOut = false }: Props) {
         // Esperar a que termine la animación antes de continuar
         setTimeout(() => {
           localStorage.setItem("admon-auth", "true");
+          // Guardar datos del operador
+          try {
+            localStorage.setItem("operador_codigo", data.codigo);
+            localStorage.setItem("operador_rol", data.rol ?? "");
+            if (data.nombre) {
+              localStorage.setItem("operador_nombre", data.nombre);
+            }
+          } catch (e) {}
           toast({ title: "Acceso concedido" });
           onSuccess?.();
           // redirect to dashboard
@@ -149,6 +170,22 @@ export default function Login({ onSuccess, isLoggingOut = false }: Props) {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-center">Código</label>
+                <Input
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !loading) {
+                      onSubmit();
+                    }
+                  }}
+                  className="text-black placeholder:text-gray-400 bg-white"
+                  style={{ color: '#000' }}
+                  disabled={loading}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1 text-center">Clave</label>
                 <Input
