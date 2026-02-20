@@ -49,6 +49,7 @@ const navigationItems = [
     url: "/ganancia-repartidores",
     icon: Wallet,
   },
+  { title: "Datos", url: "/datos", icon: FileText },
 ];
 
 type AppSidebarProps = {

@@ -14,6 +14,7 @@ import RestauranteDetalle from "@/pages/restaurante-detalle";
 import Repartidores from "@/pages/repartidores";
 import GananciaRepartidores from "@/pages/ganancia-repartidores";
 import BalanceRepartidor from "@/pages/balance-repartidor";
+import Datos from "@/pages/datos";
 import Login from "@/pages/login";
 import React, { useEffect, useState } from "react";
 
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/restaurante-detalle/:id" component={RestauranteDetalle} />
       <Route path="/repartidores" component={Repartidores} />
       <Route path="/ganancia-repartidores" component={GananciaRepartidores} />
+      <Route path="/datos" component={Datos} />
       <Route path="/balance-repartidor/:id" component={BalanceRepartidor} />
       <Route component={Pedidos} />
     </Switch>
