@@ -184,7 +184,6 @@ export default function Repartidores() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Código</TableHead>
@@ -194,12 +193,11 @@ export default function Repartidores() {
                 <TableBody>
                   {((repartidores || []).filter(r => estadoFilter === 'todos' ? true : ((r.estado ?? 'inactivo') === estadoFilter))).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5}>No hay repartidores.</TableCell>
+                      <TableCell colSpan={4}>No hay repartidores.</TableCell>
                     </TableRow>
                   ) : (
                     (repartidores || []).filter(r => estadoFilter === 'todos' ? true : ((r.estado ?? 'inactivo') === estadoFilter)).map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell>{r.id}</TableCell>
                       <TableCell>{r.nombre_completo ?? "-"}</TableCell>
                       <TableCell>{r.telefono ?? "-"}</TableCell>
                       <TableCell>{r.codigo ?? "-"}</TableCell>

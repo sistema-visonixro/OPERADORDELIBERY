@@ -269,3 +269,79 @@ CREATE TABLE public.usuarios_restaurante (
   CONSTRAINT usuarios_restaurante_pkey PRIMARY KEY (id),
   CONSTRAINT usuarios_restaurante_restaurante_id_fkey FOREIGN KEY (restaurante_id) REFERENCES public.restaurantes(id)
 );
+
+
+
+
+
+
+-- Agregar campos precio_extra_por_km y distancia_minima_km a la tabla restaurantes
+
+ALTER TABLE public.restaurantes
+ADD COLUMN precio_extra_por_km numeric DEFAULT 0.00,
+ADD COLUMN distancia_minima_km numeric DEFAULT 0.00;
+
+COMMENT ON COLUMN public.restaurantes.precio_extra_por_km IS 'Precio adicional por kilómetro de distancia';
+COMMENT ON COLUMN public.restaurantes.distancia_minima_km IS 'Distancia mínima en kilómetros para entrega';
+
+
+-- Crear tabla para registrar los pagos realizados a los repartidores
+-- Esto permite hacer un balance entre lo que gana el repartidor (pedidos_realizados_de_repartidor)
+-- y lo que se le ha pagado (pagos_repartidores)
+
+CREATE TABLE public.pagos_repartidores (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  repartidor_id uuid NOT NULL,
+  monto numeric NOT NULL CHECK (monto >= 0),
+  fecha_pago timestamp with time zone NOT NULL DEFAULT now(),
+  metodo_pago character varying NOT NULL DEFAULT 'efectivo'::character varying 
+    CHECK (metodo_pago::text = ANY (ARRAY[
+      'efectivo'::character varying, 
+      'transferencia'::character varying, 
+      'deposito'::character varying,
+      'cheque'::character varying,
+      'otro'::character varying
+    ]::text[])),
+  referencia character varying,
+  notas text,
+  operador_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT pagos_repartidores_pkey PRIMARY KEY (id),
+  CONSTRAINT pagos_repartidores_repartidor_id_fkey FOREIGN KEY (repartidor_id) 
+    REFERENCES public.repartidores(id) ON DELETE CASCADE
+);
+
+-- Índices para mejorar el rendimiento
+CREATE INDEX idx_pagos_repartidores_repartidor_id ON public.pagos_repartidores(repartidor_id);
+CREATE INDEX idx_pagos_repartidores_fecha_pago ON public.pagos_repartidores(fecha_pago);
+
+-- Comentarios
+COMMENT ON TABLE public.pagos_repartidores IS 'Registro de pagos realizados a los repartidores';
+COMMENT ON COLUMN public.pagos_repartidores.monto IS 'Monto pagado al repartidor';
+COMMENT ON COLUMN public.pagos_repartidores.metodo_pago IS 'Método de pago utilizado (efectivo, transferencia, etc)';
+COMMENT ON COLUMN public.pagos_repartidores.referencia IS 'Número de referencia, comprobante o transacción';
+COMMENT ON COLUMN public.pagos_repartidores.operador_id IS 'Usuario operador que registró el pago';
+
+-- RLS (Row Level Security) - Opcional, ajustar según tus necesidades
+ALTER TABLE public.pagos_repartidores ENABLE ROW LEVEL SECURITY;
+
+-- Política para que todos los usuarios autenticados puedan leer
+CREATE POLICY "Permitir lectura de pagos a usuarios autenticados" 
+ON public.pagos_repartidores FOR SELECT 
+USING (true);
+
+-- Política para que solo operadores puedan insertar/actualizar
+-- (Ajustar según tu sistema de autenticación)
+CREATE POLICY "Permitir inserción de pagos a operadores" 
+ON public.pagos_repartidores FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Permitir actualización de pagos a operadores" 
+ON public.pagos_repartidores FOR UPDATE 
+USING (true);
+
+
+
+
+

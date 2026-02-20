@@ -8,8 +8,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import Pedidos from "@/pages/pedidos";
+import PedidoDetalle from "@/pages/pedido-detalle";
 import Restaurantes from "@/pages/restaurantes";
+import RestauranteDetalle from "@/pages/restaurante-detalle";
 import Repartidores from "@/pages/repartidores";
+import GananciaRepartidores from "@/pages/ganancia-repartidores";
+import BalanceRepartidor from "@/pages/balance-repartidor";
 import Login from "@/pages/login";
 import React, { useEffect, useState } from "react";
 
@@ -18,8 +22,12 @@ function Router() {
     <Switch>
       <Route path="/" component={Pedidos} />
       <Route path="/pedidos" component={Pedidos} />
+      <Route path="/pedido-detalle/:id" component={PedidoDetalle} />
       <Route path="/restaurantes" component={Restaurantes} />
+      <Route path="/restaurante-detalle/:id" component={RestauranteDetalle} />
       <Route path="/repartidores" component={Repartidores} />
+      <Route path="/ganancia-repartidores" component={GananciaRepartidores} />
+      <Route path="/balance-repartidor/:id" component={BalanceRepartidor} />
       <Route component={Pedidos} />
     </Switch>
   );
@@ -61,8 +69,11 @@ function App() {
   }
 
   // Si no está autenticado, mostrar login
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} isLoggingOut={isLoggingOut} />;
-  
+  if (!authed)
+    return (
+      <Login onSuccess={() => setAuthed(true)} isLoggingOut={isLoggingOut} />
+    );
+
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
@@ -73,7 +84,9 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="visonixro-theme">
         <TooltipProvider>
           <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-            <div className={`flex h-screen w-full transition-opacity duration-500 ${isLoggingOut ? 'opacity-0' : 'opacity-100'}`}>
+            <div
+              className={`flex h-screen w-full transition-opacity duration-500 ${isLoggingOut ? "opacity-0" : "opacity-100"}`}
+            >
               <AppSidebar onLogout={handleLogout} />
               <div className="flex flex-col flex-1 overflow-hidden">
                 <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">

@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   LogOut,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -43,6 +44,11 @@ const navigationItems = [
   { title: "Pedidos", url: "/pedidos", icon: ShoppingCart },
   { title: "Restaurantes", url: "/restaurantes", icon: FileText },
   { title: "Repartidores", url: "/repartidores", icon: Users },
+  {
+    title: "Ganancia de repartidores",
+    url: "/ganancia-repartidores",
+    icon: Wallet,
+  },
 ];
 
 type AppSidebarProps = {
@@ -139,7 +145,7 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          
+
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <button
@@ -156,13 +162,14 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      
+
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro que deseas cerrar sesión? Tendrás que volver a ingresar tu clave para acceder.
+              ¿Estás seguro que deseas cerrar sesión? Tendrás que volver a
+              ingresar tu clave para acceder.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

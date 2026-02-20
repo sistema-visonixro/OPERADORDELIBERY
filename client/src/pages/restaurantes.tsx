@@ -1,163 +1,193 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { Badge } from "@/components/ui/badge";
 
 type Restaurante = {
   id: string;
   nombre?: string | null;
   activo?: boolean | null;
+  descripcion?: string | null;
+  imagen_url?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  calificacion?: number | null;
+  tiempo_entrega_min?: number | null;
+  costo_envio?: number | null;
+  emoji?: string | null;
 };
 
 export default function Restaurantes() {
   const { toast } = useToast();
-  const [estadoFilter, setEstadoFilter] = useState<'todos' | 'activo' | 'inactivo'>('todos');
+  const [, setLocation] = useLocation();
+  const [estadoFilter, setEstadoFilter] = useState<
+    "todos" | "activo" | "inactivo"
+  >("todos");
 
-  const { data: restaurantes, isLoading, error } = useQuery({
+  const {
+    data: restaurantes,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["restaurantes"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("restaurantes").select("id, nombre, activo").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("restaurantes")
+        .select(
+          "id, nombre, activo, descripcion, imagen_url, direccion, telefono, calificacion, tiempo_entrega_min, costo_envio, emoji",
+        )
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Restaurante[];
     },
   });
 
-  // Obtener conteos agregados por restaurante (parallel)
-  const { data: agregados, isLoading: loadingAgregados } = useQuery({
-    queryKey: ["restaurantes-agregados", restaurantes],
-    enabled: Array.isArray(restaurantes),
-    queryFn: async () => {
-      if (!restaurantes) return {} as Record<string, any>;
-      const result: Record<string, any> = {};
-      await Promise.all(
-        restaurantes.map(async (r) => {
-          try {
-            const platillosResp = await supabase.from("platillos").select("id", { count: "exact", head: true }).eq("restaurante_id", r.id);
-            const platillosCount = (platillosResp as any)?.count ?? 0;
-            const bebidasCount = 0; // no 'tipo' column available in platillos schema
+  const activosCount = (restaurantes || []).filter(
+    (r) => (r.activo ?? true) === true,
+  ).length;
+  const inactivosCount = (restaurantes || []).filter(
+    (r) => (r.activo ?? true) === false,
+  ).length;
 
-            // Helper to try multiple status column names across possible tables
-            async function countByStatus(table: string, columnCandidates: string[], statuses: string[]) {
-              for (const col of columnCandidates) {
-                try {
-                  const { count } = await supabase.from(table).select("id", { count: "exact", head: true }).eq("restaurante_id", r.id).in(col, statuses) as any;
-                  if (typeof count === "number") return count;
-                } catch (e) {
-                  // ignore and try next column name
-                }
-              }
-              return 0;
-            }
-
-            const statusCols = ["estado_pedido", "status", "estado"];
-            const realizadosVals = ["entregado", "realizado", "completado"];
-            const rechazadosVals = ["cancelado", "rechazado"];
-            const pendientesVals = ["pendiente", "en_preparacion", "enviado"];
-
-            const [pedidosRealizados1, pedidosRechazados1, pedidosPendientes1] = await Promise.all([
-              countByStatus("pedidos_restaurante", statusCols, realizadosVals),
-              countByStatus("pedidos_restaurante", statusCols, rechazadosVals),
-              countByStatus("pedidos_restaurante", statusCols, pendientesVals),
-            ]);
-
-            const [pedidosRealizados2, pedidosRechazados2, pedidosPendientes2] = await Promise.all([
-              countByStatus("pedidos", statusCols, realizadosVals),
-              countByStatus("pedidos", statusCols, rechazadosVals),
-              countByStatus("pedidos", statusCols, pendientesVals),
-            ]);
-
-            const pedidosRealizados = (pedidosRealizados1 ?? 0) + (pedidosRealizados2 ?? 0);
-            const pedidosRechazados = (pedidosRechazados1 ?? 0) + (pedidosRechazados2 ?? 0);
-            const pedidosPendientes = (pedidosPendientes1 ?? 0) + (pedidosPendientes2 ?? 0);
-            result[r.id] = {
-              platillos: platillosCount,
-              bebidas: bebidasCount,
-              pedidos_realizados: pedidosRealizados,
-              pedidos_rechazados: pedidosRechazados,
-              pedidos_pendientes: pedidosPendientes,
-            };
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("Error agregando conteos por restaurante", e);
-            result[r.id] = { platillos: 0, bebidas: 0, pedidos_realizados: 0, pedidos_rechazados: 0, pedidos_pendientes: 0 };
-          }
-        })
-      );
-      return result;
-    },
+  const restaurantesFiltrados = (restaurantes || []).filter((r) => {
+    if (estadoFilter === "todos") return true;
+    if (estadoFilter === "activo") return (r.activo ?? true) === true;
+    return (r.activo ?? true) === false;
   });
-
-  const activosCount = (restaurantes || []).filter(r => (r.activo ?? true) === true).length;
-  const inactivosCount = (restaurantes || []).filter(r => (r.activo ?? true) === false).length;
 
   return (
     <div className="p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Restaurantes</h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setEstadoFilter('todos')}>Todos</Button>
-        </div>
       </div>
+
       {/* Filtros por activo */}
-      <div className="flex gap-4 mb-4">
-        <Card className={`p-3 cursor-pointer flex-1 ${estadoFilter === 'activo' ? 'ring-2 ring-green-500 bg-green-50' : ''}`} onClick={() => setEstadoFilter((s) => (s === 'activo' ? 'todos' : 'activo'))}>
-          <CardContent>
+      <div className="flex gap-4 mb-6">
+        <Card
+          className={`p-3 cursor-pointer flex-1 ${estadoFilter === "activo" ? "ring-2 ring-green-500 bg-green-50" : ""}`}
+          onClick={() =>
+            setEstadoFilter((s) => (s === "activo" ? "todos" : "activo"))
+          }
+        >
+          <CardContent className="p-0">
             <div className="text-sm text-muted-foreground">Activos</div>
             <div className="text-xl font-bold">{activosCount}</div>
           </CardContent>
         </Card>
 
-        <Card className={`p-3 cursor-pointer flex-1 ${estadoFilter === 'inactivo' ? 'ring-2 ring-rose-500 bg-rose-50' : ''}`} onClick={() => setEstadoFilter((s) => (s === 'inactivo' ? 'todos' : 'inactivo'))}>
-          <CardContent>
+        <Card
+          className={`p-3 cursor-pointer flex-1 ${estadoFilter === "inactivo" ? "ring-2 ring-rose-500 bg-rose-50" : ""}`}
+          onClick={() =>
+            setEstadoFilter((s) => (s === "inactivo" ? "todos" : "inactivo"))
+          }
+        >
+          <CardContent className="p-0">
             <div className="text-sm text-muted-foreground">Inactivos</div>
             <div className="text-xl font-bold">{inactivosCount}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardContent>
-          {isLoading || loadingAgregados ? (
-            <p>Cargando...</p>
-          ) : error ? (
-            <div className="text-red-500">Error cargando restaurantes: {String((error as any).message ?? error)}</div>
-          ) : (
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Activo</TableHead>
-                    <TableHead>Platillos</TableHead>
-                    <TableHead>Bebidas</TableHead>
-                    <TableHead>Pedidos Realizados</TableHead>
-                    <TableHead>Rechazados</TableHead>
-                    <TableHead>Pendientes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(restaurantes || []).filter(r => (estadoFilter === 'todos' ? true : ((estadoFilter === 'activo') ? (r.activo ?? true) === true : (r.activo ?? true) === false))).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.id}</TableCell>
-                      <TableCell>{r.nombre ?? "-"}</TableCell>
-                      <TableCell>{(r.activo ?? true) ? 'Activo' : 'Inactivo'}</TableCell>
-                      <TableCell>{(agregados && agregados[r.id]?.platillos) ?? 0}</TableCell>
-                      <TableCell>{(agregados && agregados[r.id]?.bebidas) ?? 0}</TableCell>
-                      <TableCell>{(agregados && agregados[r.id]?.pedidos_realizados) ?? 0}</TableCell>
-                      <TableCell>{(agregados && agregados[r.id]?.pedidos_rechazados) ?? 0}</TableCell>
-                      <TableCell>{(agregados && agregados[r.id]?.pedidos_pendientes) ?? 0}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <p>Cargando...</p>
+      ) : error ? (
+        <div className="text-red-500">
+          Error cargando restaurantes: {String((error as any).message ?? error)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {restaurantesFiltrados.map((restaurante) => (
+            <Card
+              key={restaurante.id}
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 overflow-hidden"
+              onClick={() =>
+                setLocation(`/restaurante-detalle/${restaurante.id}`)
+              }
+            >
+              {restaurante.imagen_url ? (
+                <div className="h-48 w-full overflow-hidden">
+                  <img
+                    src={restaurante.imagen_url}
+                    alt={restaurante.nombre || "Restaurante"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-48 w-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
+                  <span className="text-6xl">{restaurante.emoji || "🍽️"}</span>
+                </div>
+              )}
+
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg line-clamp-1">
+                    {restaurante.nombre || "Sin nombre"}
+                  </CardTitle>
+                  <Badge
+                    variant={restaurante.activo ? "default" : "destructive"}
+                  >
+                    {restaurante.activo ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                {restaurante.descripcion && (
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {restaurante.descripcion}
+                  </p>
+                )}
+
+                <div className="space-y-2 text-sm">
+                  {restaurante.direccion && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">📍</span>
+                      <span className="line-clamp-1">
+                        {restaurante.direccion}
+                      </span>
+                    </div>
+                  )}
+
+                  {restaurante.telefono && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">📞</span>
+                      <span>{restaurante.telefono}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-1">
+                      <span>⭐</span>
+                      <span className="font-medium">
+                        {restaurante.calificacion?.toFixed(1) ?? "N/A"}
+                      </span>
+                    </div>
+
+                    {restaurante.tiempo_entrega_min && (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <span>🕐</span>
+                        <span>{restaurante.tiempo_entrega_min} min</span>
+                      </div>
+                    )}
+
+                    {restaurante.costo_envio !== null &&
+                      restaurante.costo_envio !== undefined && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span>💵</span>
+                          <span>${restaurante.costo_envio}</span>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
